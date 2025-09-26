@@ -95,7 +95,7 @@ describe('JSON Protocol Handler', () => {
       // Create a handler with smaller limits for testing
       const testHandler = new JSONProtocolHandler({
         maxMessageSize: 1000, // 1KB limit
-        maxBufferSize: 2000   // 2KB buffer limit
+        maxBufferSize: 2000 // 2KB buffer limit
       });
 
       const largeMessage = {

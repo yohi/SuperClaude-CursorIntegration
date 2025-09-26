@@ -71,10 +71,10 @@ superclaude-cursor-bridge/
 #### Task 2.1: JSON Protocol Handler の実装
 **Description:** SuperClaude CLIとの構造化データ通信を処理するコンポーネント
 **Acceptance Criteria:**
-- [ ] JSON形式でのリクエスト/レスポンス処理が実装済み
-- [ ] 非同期処理による応答性の確保
-- [ ] エラーハンドリングと適切なエラーメッセージ
-- [ ] ログ機能の実装
+- [x] JSON形式でのリクエスト/レスポンス処理が実装済み
+- [x] 非同期処理による応答性の確保
+- [x] エラーハンドリングと適切なエラーメッセージ
+- [x] ログ機能の実装
 **Implementation Notes:**
 - Promise/async-awaitベースの実装
 - コマンド実行のタイムアウト制御

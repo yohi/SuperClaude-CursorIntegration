@@ -1,6 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
 import { spawn } from 'child_process';
-import { promisify } from 'util';
 
 describe('Development Environment Setup', () => {
   test('Node.js version should be 18 or higher', () => {
@@ -157,7 +156,7 @@ describe('Development Environment Setup', () => {
       // モックされたCursor IDE環境をテスト
       const mockCursorEnvironment = {
         chatCommands: [],
-        registerCommand: function(name, handler) {
+        registerCommand: function (name, handler) {
           this.chatCommands.push({ name, handler });
         }
       };

@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import { StringDecoder } from 'string_decoder';
 
 export class JSONProtocolHandler extends EventEmitter {
-  constructor(options = {}) {
+  constructor (options = {}) {
     super();
     this.maxMessageSize = options.maxMessageSize || 1024 * 1024; // 1MB
     this.maxBufferSize = options.maxBufferSize || 1024 * 1024; // 1MB
@@ -25,7 +25,7 @@ export class JSONProtocolHandler extends EventEmitter {
    * @param {Buffer} data - Incoming data buffer
    * @returns {Array} Array of parsed JSON objects
    */
-  parseBuffer(data) {
+  parseBuffer (data) {
     // 累積バイト数を先に検証（DoS対策）
     this._bufferBytes = (this._bufferBytes || 0) + data.length;
     if (this._bufferBytes > this.maxBufferSize) {
@@ -72,7 +72,7 @@ export class JSONProtocolHandler extends EventEmitter {
    * @param {string} command - Command to execute
    * @returns {Promise} Promise that resolves with command result
    */
-  async executeCommand(command) {
+  async executeCommand (command) {
     const commandId = ++this.commandId;
 
     return new Promise((resolve, reject) => {
@@ -161,7 +161,6 @@ export class JSONProtocolHandler extends EventEmitter {
           this.activeCommands.delete(commandId);
           reject(new Error(`Process execution failed: ${error.message}`));
         });
-
       } catch (error) {
         clearTimeout(timeout);
         this.activeCommands.delete(commandId);
@@ -174,7 +173,7 @@ export class JSONProtocolHandler extends EventEmitter {
    * Handle incoming data for async responses
    * @param {string} data - Incoming NDJSON data
    */
-  handleIncomingData(data) {
+  handleIncomingData (data) {
     try {
       const messages = this.parseBuffer(Buffer.from(data, 'utf8'));
 
@@ -208,7 +207,7 @@ export class JSONProtocolHandler extends EventEmitter {
    * Set command execution timeout
    * @param {number} timeout - Timeout in milliseconds
    */
-  setCommandTimeout(timeout) {
+  setCommandTimeout (timeout) {
     const t = Number(timeout);
     if (!Number.isFinite(t) || t < 10) {
       throw new Error('Invalid timeout: must be a finite number >= 10ms');
@@ -219,9 +218,9 @@ export class JSONProtocolHandler extends EventEmitter {
   /**
    * Close the protocol handler and cleanup resources
    */
-  close() {
+  close () {
     // Cancel all active commands
-    for (const [commandId, command] of this.activeCommands) {
+    for (const [, command] of this.activeCommands) {
       clearTimeout(command.timeout);
       try { command.child?.kill(); } catch {}
       command.reject(new Error('Protocol handler closed'));
