@@ -16,7 +16,7 @@
 - [x] Node.js 18+がインストール済み
 - [x] Python 3.8+がインストール済み
 - [x] SuperClaude CLI (`pipx install SuperClaude`) がインストール済み
-- [ ] SuperClaudeが正常に動作することを確認（`SuperClaude install`実行）
+- [x] SuperClaudeが正常に動作することを確認（`SuperClaude install`実行）
 - [x] Cursor IDEが利用可能
 **Implementation Notes:**
 - pipxを使用したSuperClaudeインストールを推奨
@@ -28,10 +28,10 @@
 #### Task 1.2: プロジェクト構造の作成
 **Description:** Bridge プロジェクトの基本構造とpackage.json を作成
 **Acceptance Criteria:**
-- [ ] プロジェクトディレクトリ構造が作成済み
-- [ ] package.json に必要な依存関係が定義済み
-- [ ] 基本的な設定ファイル（.gitignore, README.md等）が作成済み
-- [ ] ESLint/Prettier設定が完了
+- [x] プロジェクトディレクトリ構造が作成済み
+- [x] package.json に必要な依存関係が定義済み
+- [x] 基本的な設定ファイル（.gitignore, README.md等）が作成済み
+- [x] ESLint/Prettier設定が完了
 **Implementation Notes:**
 ```
 superclaude-cursor-bridge/
@@ -53,10 +53,10 @@ superclaude-cursor-bridge/
 #### Task 1.3: SuperClaude CLI接続テスト
 **Description:** Node.jsからSuperClaude CLIを実行し、基本的な通信を確立
 **Acceptance Criteria:**
-- [ ] child_process.spawnでSuperClaude CLIを実行可能
-- [ ] 簡単なコマンド（例：バージョン確認）の実行に成功
-- [ ] stdout/stderrの取得が正常に動作
-- [ ] JSON形式でのレスポンス解析が可能
+- [x] child_process.spawnでSuperClaude CLIを実行可能
+- [x] 簡単なコマンド（例：バージョン確認）の実行に成功
+- [x] stdout/stderrの取得が正常に動作
+- [x] JSON形式でのレスポンス解析が可能
 **Implementation Notes:**
 - SuperClaude CLI のバージョンやヘルプ情報取得から開始
 - プロセス管理とエラーハンドリングを適切に実装
