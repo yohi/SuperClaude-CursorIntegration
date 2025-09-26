@@ -338,18 +338,29 @@ export class FileUtilities extends EventEmitter {
       throw new Error('Invalid file path');
     }
 
+    // 最初に絶対パスを検出（正規化前の原始的チェック）
+    if (this.isAbsolutePath(filePath)) {
+      throw new Error('Path outside base directory not allowed');
+    }
+
     // 正規化
     const normalized = this.normalizePath(filePath);
 
-    // パストラバーサル攻撃防止 - セグメント単位で正確にチェック
-    const segments = normalized.split(path.sep).filter(segment => segment !== '');
-    if (segments.some(segment => segment === '..')) {
+    // クロスプラットフォーム対応のパストラバーサル検出
+    // baseDir に対する解決済みパスを計算
+    const resolvedTarget = path.resolve(this.baseDir, normalized);
+    const relativePath = path.relative(this.baseDir, resolvedTarget);
+
+    // パストラバーサル攻撃の検出
+    // 1. 相対パスが '..' で始まる場合は baseDir の外側
+    // 2. 解決済みパスが baseDir の外側にある場合
+    if (relativePath.startsWith('..') || !resolvedTarget.startsWith(path.resolve(this.baseDir))) {
       throw new Error('Security violation: path traversal detected');
     }
 
-    // 絶対パスの検出
-    if (this.isAbsolutePath(filePath)) {
-      throw new Error('Path outside base directory not allowed');
+    // 空の相対パス（つまり baseDir そのもの）は許可しない
+    if (relativePath === '' || relativePath === '.') {
+      throw new Error('Invalid file path: cannot access base directory');
     }
 
     // 危険なファイル名の検出
