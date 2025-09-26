@@ -1,15 +1,15 @@
-module.exports = {
+export default {
   testEnvironment: 'node',
-  moduleFileExtensions: ['js', 'json'],
-  testMatch: [
-    '**/tests/**/*.test.js'
-  ],
   collectCoverageFrom: [
     'src/**/*.js',
     '!src/**/*.test.js'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
+  testMatch: [
+    '**/tests/**/*.test.js',
+    '**/src/**/*.test.js'
+  ],
   verbose: true,
   transform: {}
 };
