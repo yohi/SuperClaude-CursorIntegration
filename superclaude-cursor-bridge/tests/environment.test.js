@@ -12,7 +12,9 @@ describe('Development Environment Setup', () => {
   test('Python 3.8+ should be available', async () => {
     const tryPythonCommand = (command) => {
       return new Promise((resolve, reject) => {
-        const pythonProcess = spawn(command, ['--version']);
+        // pyコマンドの場合はPython 3を明示的に指定
+        const args = command === 'py' ? ['-3', '--version'] : ['--version'];
+        const pythonProcess = spawn(command, args);
         const timeout = setTimeout(() => {
           pythonProcess.kill();
           reject(new Error(`${command} version check timed out`));
@@ -66,7 +68,7 @@ describe('Development Environment Setup', () => {
     };
 
     // プラットフォームに応じてコマンド候補を決定
-    const commands = process.platform === 'win32' ? ['python', 'python3'] : ['python3', 'python'];
+    const commands = process.platform === 'win32' ? ['py', 'python', 'python3'] : ['python3', 'python'];
 
     let lastError;
     for (const command of commands) {
