@@ -95,7 +95,7 @@ describe('JSON Protocol Handler', () => {
       // Create a handler with smaller limits for testing
       const testHandler = new JSONProtocolHandler({
         maxMessageSize: 1000, // 1KB limit
-        maxBufferSize: 2000   // 2KB buffer limit
+        maxBufferSize: 2000 // 2KB buffer limit
       });
 
       const largeMessage = {
@@ -133,15 +133,15 @@ describe('JSON Protocol Handler', () => {
       // Set short timeout for testing
       handler.setCommandTimeout(100);
 
-      await expect(async () => {
-        await handler.executeCommand('/sc:long-running-command');
-      }).rejects.toThrow(/Command execution timed out/);
+      await expect(
+        handler.executeCommand('/sc:long-running-command')
+      ).rejects.toThrow(/Command execution timed out/);
     }, 10000);
 
     test('should handle process execution errors', async () => {
-      await expect(async () => {
-        await handler.executeCommand('/sc:invalid-command');
-      }).rejects.toThrow();
+      await expect(
+        handler.executeCommand('/sc:invalid-command')
+      ).rejects.toThrow();
     });
   });
 
