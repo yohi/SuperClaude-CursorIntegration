@@ -122,7 +122,7 @@ describe('JSON Protocol Handler', () => {
   });
 
   describe('SuperClaude CLI Integration', () => {
-    test('should spawn SuperClaude CLI process', async () => {
+    test('should return help info (mock path)', async () => {
       const result = await handler.executeCommand('/sc:help');
 
       expect(result).toBeDefined();
