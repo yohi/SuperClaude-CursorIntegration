@@ -97,12 +97,14 @@ async function testInstallStatus() {
 
     child.on('close', (code) => {
       console.log(`📊 Dry-runテスト完了 (code: ${code})`);
-      if (output.includes('SuperClaude')) {
+      if (code !== 0) {
+        reject(new Error(`プロセスがコード${code}で終了しました: ${output.trim()}`));
+      } else if (output.includes('SuperClaude')) {
         console.log('✅ SuperClaudeフレームワーク認識済み');
         resolve({ success: true, output: output.trim() });
       } else {
         console.log('⚠️ SuperClaudeフレームワークの詳細情報が取得できませんでした');
-        resolve({ success: false, output: output.trim() });
+        reject(new Error(`期待される出力が見つかりませんでした: ${output.trim()}`));
       }
     });
 
