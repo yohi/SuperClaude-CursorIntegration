@@ -1,0 +1,43 @@
+{
+  "name": "superclaude-cursor-bridge",
+  "version": "0.1.0",
+  "description": "SuperClaude Cursor統合システム - ClaudeCodeの拡張フレームワークであるSuperClaudeをCursor IDEで利用可能にする",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.57.0",
+    "@jest/globals": "^29.7.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "superclaude",
+    "cursor-ide",
+    "ai-assistant",
+    "bridge",
+    "integration"
+  ],
+  "author": "SuperClaude Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SuperClaude/superclaude-cursor-bridge"
+  }
+}
