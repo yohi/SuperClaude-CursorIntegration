@@ -82,11 +82,18 @@ Core Processing → JSON Response → Bridge → Formatted Output → User Inter
   - 改行で分割し、完全な行ごとにJSON解析
   - UTF-8デコーディング対応
   - 部分メッセージの適切な処理（複数読み取り間での継続）
+- **Buffering & Parsing Strategy:**
+  - データを受信時にバッファに蓄積
+  - 改行文字(\n)でレコードを分割
+  - 完全な行が準備できた時点でJSON.parse()実行
+  - 部分的な行は次回のデータ受信まで保持
+  - UTF-8文字境界の適切な処理
 - **Security & Limits:**
   - 最大メッセージサイズ制限（例：1MB）
   - 不正JSON形式の堅牢なエラーハンドリング
   - サイズ制限超過時の適切なログ出力
-- **Error Handling:** malformed JSONや制限超過の詳細ログ
+  - バッファサイズ制限による DoS攻撃防止
+- **Error Handling:** malformed JSONや制限超過の詳細ログ出力と回復処理
 
 ### Component 4: Simple Configuration
 **Purpose:** 基本的な設定管理（複雑な同期機能は省略）
