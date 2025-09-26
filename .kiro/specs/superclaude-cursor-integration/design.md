@@ -75,9 +75,18 @@ Core Processing → JSON Response → Bridge → Formatted Output → User Inter
 - JSON Data Serialization/Deserialization
 - Async Response Handling
 **Implementation Notes:**
-- stdout/stderrストリーム処理
-- JSONベースのリクエスト/レスポンス
-- 非同期処理による応答性確保
+- **Message Framing:** Newline-Delimited JSON (NDJSON)形式を採用
+- **Delimiter:** 改行文字(\n)をレコードセパレーターとして使用
+- **Runtime Parser:**
+  - バイト蓄積バッファを使用してストリーム処理
+  - 改行で分割し、完全な行ごとにJSON解析
+  - UTF-8デコーディング対応
+  - 部分メッセージの適切な処理（複数読み取り間での継続）
+- **Security & Limits:**
+  - 最大メッセージサイズ制限（例：1MB）
+  - 不正JSON形式の堅牢なエラーハンドリング
+  - サイズ制限超過時の適切なログ出力
+- **Error Handling:** malformed JSONや制限超過の詳細ログ
 
 ### Component 4: Simple Configuration
 **Purpose:** 基本的な設定管理（複雑な同期機能は省略）

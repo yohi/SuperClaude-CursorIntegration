@@ -113,6 +113,25 @@ superclaude-cursor-bridge/
 **Dependencies:** Task 2.1
 **Estimated Effort:** 10-12時間
 
+#### Task 2.4: File Utilities の実装
+**Description:** ファイル操作とプロジェクト管理の基本機能を提供するユーティリティコンポーネント
+**Acceptance Criteria:**
+- [ ] ファイル読み書きAPIの実装が完了
+- [ ] 設定ファイル永続化機能が動作
+- [ ] パス正規化とクロスプラットフォーム対応
+- [ ] ファイル監視・自動リロード機能の実装
+- [ ] セキュリティ検証（パストラバーサル対策等）
+- [ ] ユニットテストの実装
+**Implementation Notes:**
+- Node.js fs/fs.promises API の活用
+- path モジュールによるクロスプラットフォーム対応
+- chokidar による ファイル監視機能
+- セキュリティサンドボックス（プロジェクト内ファイルのみアクセス）
+- パフォーマンス最適化（ファイルキャッシュ）
+- エラーハンドリング（権限、存在チェック等）
+**Dependencies:** Task 2.1, Task 2.3
+**Estimated Effort:** 6-10時間
+
 ### Phase 3: Cursor IDE統合
 **Duration:** 2-3週間
 **Dependencies:** Phase 2完了
@@ -129,7 +148,7 @@ superclaude-cursor-bridge/
 - コマンド補完とヘルプ機能の提供
 - マルチセッション対応（複数プロジェクト同時作業）
 - UI feedback（進行状況表示等）の実装
-**Dependencies:** Task 2.2, 2.3
+**Dependencies:** Task 2.2, 2.3, 2.4
 **Estimated Effort:** 16-20時間
 
 #### Task 3.2: 優先コマンドの実装
