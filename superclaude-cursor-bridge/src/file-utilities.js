@@ -363,9 +363,10 @@ export class FileUtilities extends EventEmitter {
       throw new Error('Invalid file path: cannot access base directory');
     }
 
-    // 危険なファイル名の検出
-    const fileName = path.basename(normalized).toUpperCase();
-    if (this.dangerousNames.includes(fileName)) {
+    // 危険なファイル名の検出（拡張子を除いたベース名で検証）
+    const fileName = path.basename(normalized);
+    const baseName = path.parse(fileName).name.toUpperCase();
+    if (this.dangerousNames.includes(baseName)) {
       throw new Error('Invalid file name: reserved system name');
     }
 
