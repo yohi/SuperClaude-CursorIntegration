@@ -13,11 +13,11 @@
 #### Task 1.1: 開発環境のセットアップ
 **Description:** 開発に必要なツールチェーンと依存関係を準備する
 **Acceptance Criteria:**
-- [ ] Node.js 18+がインストール済み
-- [ ] Python 3.8+がインストール済み
-- [ ] SuperClaude CLI (`pipx install SuperClaude`) がインストール済み
+- [x] Node.js 18+がインストール済み
+- [x] Python 3.8+がインストール済み
+- [x] SuperClaude CLI (`pipx install SuperClaude`) がインストール済み
 - [ ] SuperClaudeが正常に動作することを確認（`SuperClaude install`実行）
-- [ ] Cursor IDEが利用可能
+- [x] Cursor IDEが利用可能
 **Implementation Notes:**
 - pipxを使用したSuperClaudeインストールを推奨
 - 代替として npm版 (`npm install -g @bifrost_inc/superclaude`) も可
