@@ -10,55 +10,77 @@ describe('Development Environment Setup', () => {
   });
 
   test('Python 3.8+ should be available', async () => {
-    const pythonProcess = spawn('python3', ['--version']);
+    const tryPythonCommand = (command) => {
+      return new Promise((resolve, reject) => {
+        const pythonProcess = spawn(command, ['--version']);
+        const timeout = setTimeout(() => {
+          pythonProcess.kill();
+          reject(new Error(`${command} version check timed out`));
+        }, 3000);
 
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        pythonProcess.kill();
-        reject(new Error('Python version check timed out'));
-      }, 3000);
+        let output = '';
 
-      let output = '';
+        pythonProcess.stdout.on('data', (data) => {
+          output += data.toString();
+        });
 
-      pythonProcess.stdout.on('data', (data) => {
-        output += data.toString();
+        pythonProcess.stderr.on('data', (data) => {
+          output += data.toString();
+        });
+
+        pythonProcess.on('close', (code) => {
+          clearTimeout(timeout);
+
+          if (code !== 0) {
+            reject(new Error(`${command} not available`));
+            return;
+          }
+
+          const versionMatch = output.match(/Python (\d+)\.(\d+)/);
+          if (!versionMatch) {
+            reject(new Error('Could not parse Python version'));
+            return;
+          }
+
+          const majorVersion = parseInt(versionMatch[1]);
+          const minorVersion = parseInt(versionMatch[2]);
+
+          if (majorVersion === 3) {
+            expect(minorVersion).toBeGreaterThanOrEqual(8);
+          } else {
+            expect(majorVersion).toBeGreaterThan(3);
+          }
+
+          resolve();
+        });
+
+        pythonProcess.on('error', (error) => {
+          clearTimeout(timeout);
+          if (error.code === 'ENOENT') {
+            reject(new Error(`${command} command not found`));
+          } else {
+            reject(new Error(`${command} process error: ${error.message}`));
+          }
+        });
       });
+    };
 
-      pythonProcess.stderr.on('data', (data) => {
-        output += data.toString();
-      });
+    // プラットフォームに応じてコマンド候補を決定
+    const commands = process.platform === 'win32' ? ['python', 'python3'] : ['python3', 'python'];
 
-      pythonProcess.on('close', (code) => {
-        clearTimeout(timeout);
+    let lastError;
+    for (const command of commands) {
+      try {
+        await tryPythonCommand(command);
+        return; // 成功した場合はテスト終了
+      } catch (error) {
+        lastError = error;
+        continue; // 失敗した場合は次のコマンドを試行
+      }
+    }
 
-        if (code !== 0) {
-          reject(new Error('Python3 not available'));
-          return;
-        }
-
-        const versionMatch = output.match(/Python (\d+)\.(\d+)/);
-        if (!versionMatch) {
-          reject(new Error('Could not parse Python version'));
-          return;
-        }
-
-        const majorVersion = parseInt(versionMatch[1]);
-        const minorVersion = parseInt(versionMatch[2]);
-
-        if (majorVersion === 3) {
-          expect(minorVersion).toBeGreaterThanOrEqual(8);
-        } else {
-          expect(majorVersion).toBeGreaterThan(3);
-        }
-
-        resolve();
-      });
-
-      pythonProcess.on('error', (error) => {
-        clearTimeout(timeout);
-        reject(new Error(`Python process error: ${error.message}`));
-      });
-    });
+    // すべてのコマンドが失敗した場合
+    throw lastError;
   }, 10000);
 
   test('SuperClaude CLI should be available or installable', async () => {

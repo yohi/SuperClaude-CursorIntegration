@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   testEnvironment: 'node',
   moduleFileExtensions: ['js', 'json'],
   testMatch: [
@@ -10,5 +10,7 @@ export default {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
-  verbose: true
+  verbose: true,
+  transform: {},
+  preset: null
 };
