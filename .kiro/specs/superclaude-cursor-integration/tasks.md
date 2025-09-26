@@ -68,7 +68,7 @@ superclaude-cursor-bridge/
 **Duration:** 2-3週間
 **Dependencies:** Phase 1完了
 
-#### Task 2.1: JSON Protocol Handler の実装
+#### Task 2.1: JSON Protocol Handler の実装 ✅
 **Description:** SuperClaude CLIとの構造化データ通信を処理するコンポーネント
 **Acceptance Criteria:**
 - [x] JSON形式でのリクエスト/レスポンス処理が実装済み
@@ -83,13 +83,13 @@ superclaude-cursor-bridge/
 **Dependencies:** Task 1.3
 **Estimated Effort:** 12-16時間
 
-#### Task 2.2: Command Bridge の実装
+#### Task 2.2: Command Bridge の実装 ✅
 **Description:** Cursor IDEコマンドをSuperClaudeスラッシュコマンドに変換
 **Acceptance Criteria:**
-- [ ] 25個のSuperClaudeコマンドのマッピング定義が完了
-- [ ] コマンド変換ロジックが実装済み
-- [ ] パラメーター正規化と検証機能が動作
-- [ ] コマンド実行履歴の管理機能
+- [x] 25個のSuperClaudeコマンドのマッピング定義が完了
+- [x] コマンド変換ロジックが実装済み
+- [x] パラメーター正規化と検証機能が動作
+- [x] コマンド実行履歴の管理機能
 **Implementation Notes:**
 - SuperClaudeコマンド一覧の完全なマッピングファイル作成
 - コマンドプレフィックス変換（Cursor → `/sc:`）
@@ -98,13 +98,13 @@ superclaude-cursor-bridge/
 **Dependencies:** Task 2.1
 **Estimated Effort:** 16-20時間
 
-#### Task 2.3: Configuration Manager の実装
+#### Task 2.3: Configuration Manager の実装 ✅
 **Description:** SuperClaudeとCursor IDE間の設定管理
 **Acceptance Criteria:**
-- [ ] SuperClaude設定ファイル（.claude.json, settings.json）の読み取り
-- [ ] Bridge固有設定の管理
-- [ ] 設定ファイルの妥当性検証
-- [ ] 設定変更の動的反映
+- [x] SuperClaude設定ファイル（.claude.json, settings.json）の読み取り
+- [x] Bridge固有設定の管理
+- [x] 設定ファイルの妥当性検証
+- [x] 設定変更の動的反映
 **Implementation Notes:**
 - SuperClaudeの既存設定形式を尊重
 - Bridge固有の設定項目（SuperClaude CLIパス、タイムアウト等）
