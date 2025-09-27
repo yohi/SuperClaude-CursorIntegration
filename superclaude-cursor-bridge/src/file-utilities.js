@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import fs from 'fs/promises';
 import { createReadStream, createWriteStream } from 'fs';
+import { realpathSync } from 'fs';
 import path from 'path';
 import { watch } from 'chokidar';
 
@@ -14,7 +15,13 @@ export class FileUtilities extends EventEmitter {
   constructor(options = {}) {
     super();
 
-    this.baseDir = options.baseDir || process.cwd();
+    this.baseDir = path.resolve(options.baseDir || process.cwd());
+    try {
+      this.baseDirRealPath = realpathSync(this.baseDir);
+    } catch (error) {
+      // baseDirが存在しない場合は、そのまま設定値を使用
+      this.baseDirRealPath = this.baseDir;
+    }
     this.enableFileWatching = options.enableFileWatching !== false;
     this.watchers = new Map();
     this.fileCache = new Map();
@@ -356,6 +363,25 @@ export class FileUtilities extends EventEmitter {
     // 2. 解決済みパスが baseDir の外側にある場合
     if (relativePath.startsWith('..') || !resolvedTarget.startsWith(path.resolve(this.baseDir))) {
       throw new Error('Security violation: path traversal detected');
+    }
+
+    // シンボリックリンク経由での脱出を防ぐ
+    let parentRealPath;
+    try {
+      parentRealPath = realpathSync(path.dirname(resolvedTarget));
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        parentRealPath = this.baseDirRealPath;
+      } else {
+        throw error;
+      }
+    }
+
+    if (
+      parentRealPath !== this.baseDirRealPath &&
+      !parentRealPath.startsWith(`${this.baseDirRealPath}${path.sep}`)
+    ) {
+      throw new Error('Security violation: symlink escape detected');
     }
 
     // 空の相対パス（つまり baseDir そのもの）は許可しない
