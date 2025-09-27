@@ -170,7 +170,11 @@ export class FileUtilities extends EventEmitter {
       const fullPath = path.join(this.baseDir, safePath);
       await fs.access(fullPath);
       return true;
-    } catch {
+    } catch (error) {
+      // セキュリティエラーは再スローし、ファイルアクセスエラーのみfalseを返す
+      if (error.message && error.message.includes('Security violation')) {
+        throw error;
+      }
       return false;
     }
   }
@@ -186,7 +190,11 @@ export class FileUtilities extends EventEmitter {
       const fullPath = path.join(this.baseDir, safePath);
       const stat = await fs.stat(fullPath);
       return stat.isDirectory();
-    } catch {
+    } catch (error) {
+      // セキュリティエラーは再スローし、ファイルアクセスエラーのみfalseを返す
+      if (error.message && error.message.includes('Security violation')) {
+        throw error;
+      }
       return false;
     }
   }
@@ -392,20 +400,37 @@ export class FileUtilities extends EventEmitter {
       throw new Error('Path outside base directory not allowed');
     }
 
+    // 正規化前のパストラバーサルチェック（重要！）
+    // 正規化によって隠される可能性のある危険なパターンを事前に検出
+    // ただし、ファイル名の一部として .. を含む場合は許可する
+    const rawSegments = filePath.split(/[/\\]/).filter(segment => segment !== '' && segment !== '.');
+
+    // セグメントが完全に ".." と一致する場合のみ拒否
+    // ファイル名に .. が含まれている場合（例: "file..txt"）は許可
+    if (rawSegments.some(segment => segment === '..')) {
+      throw new Error('Security violation: path traversal detected');
+    }
+
     // 正規化
     const normalized = this.normalizePath(filePath);
+
+    // 正規化後の追加チェック
+    const normalizedSegments = normalized.split(path.sep).filter(segment => segment !== '');
+    if (normalizedSegments.some(segment => segment === '..')) {
+      throw new Error('Security violation: path traversal detected');
+    }
 
     // クロスプラットフォーム対応のパストラバーサル検出
     // baseDir に対する解決済みパスを計算
     const resolvedTarget = path.resolve(this.baseDir, normalized);
-    const relativePath = path.relative(this.baseDir, resolvedTarget);
 
-    // パストラバーサル攻撃の検出
-    // 1. 相対パスが '..' で始まる場合は baseDir の外側
-    // 2. 解決済みパスが baseDir の外側にある場合
-    if (relativePath.startsWith('..') || !resolvedTarget.startsWith(path.resolve(this.baseDir))) {
+    // 解決済みパスが baseDir の外側にある場合
+    if (!resolvedTarget.startsWith(path.resolve(this.baseDir))) {
       throw new Error('Security violation: path traversal detected');
     }
+
+    // 相対パスを計算（空チェック用）
+    const relativePath = path.relative(this.baseDir, resolvedTarget);
 
     // シンボリックリンク経由での脱出を防ぐ
     // 1. ファイル自体がシンボリックリンクの場合をチェック

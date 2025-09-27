@@ -41,8 +41,12 @@
       "completion_percentage": 100
     },
     "phase3_cursor_integration": {
-      "status": "pending",
-      "next_task": "3.1-cursor-bridge-core"
+      "status": "in_progress",
+      "completed_tasks": [
+        "3.1-cursor-bridge-core"
+      ],
+      "next_task": "3.2-priority-commands",
+      "completion_percentage": 33
     }
   }
 }
