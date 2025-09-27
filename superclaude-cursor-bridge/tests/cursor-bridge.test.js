@@ -209,11 +209,15 @@ describe('CursorBridge', () => {
 
   describe('Error Handling', () => {
     test('should handle initialization errors gracefully', async () => {
-      const { default: CommandBridge } = await import('../src/command-bridge.js');
-      CommandBridge.mockImplementation(() => {
-        throw new Error('Failed to initialize CommandBridge');
-      });
+      // モックが既に設定されているので、動的インポートは不要
+      jest.unstable_mockModule('../src/command-bridge.js', () => ({
+        default: jest.fn(() => {
+          throw new Error('Failed to initialize CommandBridge');
+        })
+      }));
 
+      // 新しいモックでモジュールを再インポート
+      const { default: CursorBridge } = await import('../src/cursor-bridge.js');
       expect(() => new CursorBridge()).toThrow();
     });
 

@@ -172,6 +172,24 @@ describe('File Utilities - セキュリティ強化テスト', () => {
       expect(averageTimePerFile).toBeLessThan(100);
 
       console.log(`Average time per file operation: ${averageTimePerFile.toFixed(2)}ms`);
+
+      // テスト後のクリーンアップ
+      console.log('🧹 Cleaning up performance test files...');
+      for (let i = 0; i < iterations; i++) {
+        for (const testPath of testPaths) {
+          const fileName = `${i}_${testPath}`;
+          try {
+            const filePath = path.join(testDir, fileName);
+            await fs.unlink(filePath);
+          } catch (error) {
+            // ファイルが存在しない場合は無視
+            if (error.code !== 'ENOENT') {
+              console.warn(`Failed to cleanup ${fileName}:`, error.message);
+            }
+          }
+        }
+      }
+      console.log('✅ Cleanup completed');
     });
   });
 });

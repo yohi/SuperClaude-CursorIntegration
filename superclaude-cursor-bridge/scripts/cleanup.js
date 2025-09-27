@@ -31,7 +31,24 @@ const CLEANUP_PATTERNS = [
 
   // ログファイル（重要でないもの）
   'debug.log',
-  'error.log'
+  'error.log',
+
+  // テストで生成されるファイル（番号付きファイル）
+  '[0-9]*_*',
+  '[0-9]*simple.txt',
+  '[0-9]*file..with..dots.txt',
+  '[0-9]*complex..name..structure..test.json',
+  '*..hidden',
+  '*..backup',
+  'test..config..json',
+  'config.txt',
+  'secret',
+  'file..config',
+  'myfile..txt',
+  'backup..2024..01..15',
+  '*_subdir/',
+  'normal/',
+  'subdir/'
 ];
 
 // 保護するディレクトリ（削除しない）
@@ -51,11 +68,14 @@ function matchPattern(filename, pattern) {
   const dirPattern = pattern.endsWith('/');
   const normalized = pattern.replace(/\/$/, '');
 
-  // 特殊文字をエスケープ（* と ? は後段でワイルドカード化）
-  const esc = (s) => s.replace(/[-/\\^$+?.()|[\]{}]/g, '\\$&');
-  let safe = esc(normalized)
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
+  // 特殊文字をエスケープ（ただし * と ? は一旦保持）
+  let safe = normalized.replace(/[-/\\^$+.()|[\]{}]/g, '\\$&');
+
+  // .. を正規表現用にエスケープ
+  safe = safe.replace(/\.\./g, '\\.\\.');
+
+  // * と ? をワイルドカードに変換
+  safe = safe.replace(/\*/g, '.*').replace(/\?/g, '.');
 
   // ディレクトリ指定は配下全体も対象にする
   if (dirPattern) {
@@ -63,7 +83,15 @@ function matchPattern(filename, pattern) {
   }
 
   try {
-    return new RegExp(`^${safe}$`).test(filename);
+    const regex = new RegExp(`^${safe}$`);
+    const result = regex.test(filename);
+
+    // デバッグ出力（開発時のみ）
+    if (process.env.DEBUG_CLEANUP) {
+      console.log(`Pattern ${pattern} -> regex ^${safe}$ -> ${filename}: ${result}`);
+    }
+
+    return result;
   } catch (error) {
     // 正規表現が無効な場合は安全側に倒してfalseを返す
     console.warn(`Invalid pattern: ${pattern}`, error.message);

@@ -357,7 +357,7 @@ class CommandBridge {
     }
 
     // SuperClaudeコマンドに変換
-    const scCommand = this.translateCommand(commandName);
+    const { command: scCommand } = this.translateCommand(commandName, args);
     const normalizedArgs = this.normalizeParameters(commandName, args);
 
     try {

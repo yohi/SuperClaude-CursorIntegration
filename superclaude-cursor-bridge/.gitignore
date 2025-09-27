@@ -93,16 +93,16 @@ logs
 superclaude.log
 
 # Test files created during testing
-[0-9]*_*
-*..hidden
-config.txt
-secret
-backup..*
-document..*
-file..config
-myfile..*
-test..config..*
-*_subdir/
+tests/fixtures/[0-9]*_*
+tests/fixtures/*..hidden
+tests/fixtures/config.txt
+tests/fixtures/secret
+tests/fixtures/backup..*
+tests/fixtures/document..*
+tests/fixtures/file..config
+tests/fixtures/myfile..*
+tests/fixtures/test..config..*
+tests/fixtures/*_subdir/
 
 # Test temporary directories and files
 *..backup/
