@@ -58,7 +58,7 @@ export class FileUtilities extends EventEmitter {
     const { encoding = 'utf8', signal, ...otherOptions } = options;
     let handle;
     try {
-      handle = await fs.open(fullPath, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_NOFOLLOW, 0o644);
+      handle = await fs.open(fullPath, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_NOFOLLOW | fsConstants.O_TRUNC, 0o644);
       await handle.writeFile(content, { encoding, signal });
     } catch (error) {
       if (error.code === 'ELOOP') {
@@ -358,7 +358,21 @@ export class FileUtilities extends EventEmitter {
   async createReadStream(filePath, options = {}) {
     const safePath = this._validateAndNormalizePath(filePath);
     const fullPath = path.join(this.baseDir, safePath);
-    return createReadStream(fullPath, options);
+
+    // TOCTOU攻撃対策：ファイルディスクリプタを先に取得してシンボリックリンクを拒否
+    let fd;
+    try {
+      fd = await fs.open(fullPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+      return createReadStream(null, { fd: fd.fd, autoClose: true, ...options });
+    } catch (error) {
+      if (fd) {
+        await fd.close();
+      }
+      if (error.code === 'ELOOP') {
+        throw new Error('Security violation: symbolic link detected in file access');
+      }
+      throw error;
+    }
   }
 
   /**
