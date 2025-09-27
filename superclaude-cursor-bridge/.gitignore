@@ -91,3 +91,15 @@ logs
 # SuperClaude specific
 .claude/
 superclaude.log
+
+# Test files created during testing
+[0-9]*_*
+*..hidden
+config.txt
+secret
+backup..*
+document..*
+file..config
+myfile..*
+test..config..*
+*_subdir/

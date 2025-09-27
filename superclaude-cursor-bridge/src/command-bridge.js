@@ -4,7 +4,7 @@
  * Handles translation between Cursor IDE commands and SuperClaude slash commands,
  * providing parameter validation, execution history, and command statistics.
  */
-export class CommandBridge {
+class CommandBridge {
   constructor(options = {}) {
     this.executionHistory = [];
     this.maxHistorySize = options.maxHistorySize || 100;
@@ -347,3 +347,5 @@ export class CommandBridge {
     this.executionHistory = [];
   }
 }
+
+export default CommandBridge;

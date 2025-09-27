@@ -9,7 +9,7 @@ import { watch } from 'chokidar';
  * Manages configuration files, provides validation, and supports
  * dynamic configuration updates with file watching capabilities.
  */
-export class ConfigManager extends EventEmitter {
+class ConfigManager extends EventEmitter {
   constructor(options = {}) {
     super();
 
@@ -313,3 +313,5 @@ export class ConfigManager extends EventEmitter {
     this.removeAllListeners();
   }
 }
+
+export default ConfigManager;
