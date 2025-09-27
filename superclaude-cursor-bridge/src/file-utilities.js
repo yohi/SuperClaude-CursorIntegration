@@ -368,22 +368,41 @@ export class FileUtilities extends EventEmitter {
     }
 
     // シンボリックリンク経由での脱出を防ぐ
-    let parentRealPath;
+    // 1. ファイル自体がシンボリックリンクの場合をチェック
+    let targetRealPath;
     try {
-      parentRealPath = realpathSync(path.dirname(resolvedTarget));
+      targetRealPath = realpathSync(resolvedTarget);
+      // ファイルターゲットのrealpathが取得できた場合、それを検証
+      if (
+        targetRealPath !== this.baseDirRealPath &&
+        !targetRealPath.startsWith(`${this.baseDirRealPath}${path.sep}`)
+      ) {
+        throw new Error('Security violation: symlink escape detected');
+      }
     } catch (error) {
       if (error.code === 'ENOENT') {
-        parentRealPath = this.baseDirRealPath;
+        // ファイルが存在しない場合は親ディレクトリをチェック
+        let parentRealPath;
+        try {
+          parentRealPath = realpathSync(path.dirname(resolvedTarget));
+        } catch (parentError) {
+          if (parentError.code === 'ENOENT') {
+            parentRealPath = this.baseDirRealPath;
+          } else {
+            throw parentError;
+          }
+        }
+
+        if (
+          parentRealPath !== this.baseDirRealPath &&
+          !parentRealPath.startsWith(`${this.baseDirRealPath}${path.sep}`)
+        ) {
+          throw new Error('Security violation: symlink escape detected');
+        }
       } else {
+        // その他のエラーは再スロー
         throw error;
       }
-    }
-
-    if (
-      parentRealPath !== this.baseDirRealPath &&
-      !parentRealPath.startsWith(`${this.baseDirRealPath}${path.sep}`)
-    ) {
-      throw new Error('Security violation: symlink escape detected');
     }
 
     // 空の相対パス（つまり baseDir そのもの）は許可しない
