@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import fs from 'fs/promises';
-import { createReadStream, createWriteStream } from 'fs';
+import { createReadStream, createWriteStream, constants as fsConstants } from 'fs';
 import { realpathSync } from 'fs';
 import path from 'path';
 import { watch } from 'chokidar';
@@ -54,7 +54,22 @@ export class FileUtilities extends EventEmitter {
     const dir = path.dirname(fullPath);
     await fs.mkdir(dir, { recursive: true });
 
-    await fs.writeFile(fullPath, content, { encoding: 'utf8', ...options });
+    // TOCTOU攻撃対策：O_NOFOLLOWフラグでシンボリックリンクを拒否
+    const { encoding = 'utf8', signal, ...otherOptions } = options;
+    let handle;
+    try {
+      handle = await fs.open(fullPath, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_NOFOLLOW, 0o644);
+      await handle.writeFile(content, { encoding, signal });
+    } catch (error) {
+      if (error.code === 'ELOOP') {
+        throw new Error('Security violation: symbolic link detected in file access');
+      }
+      throw error;
+    } finally {
+      if (handle) {
+        await handle.close();
+      }
+    }
 
     // キャッシュを更新
     if (this.fileCache.has(safePath)) {
@@ -87,8 +102,12 @@ export class FileUtilities extends EventEmitter {
       }
     }
 
+    const { encoding = 'utf8', signal, ...otherOptions } = options;
+    let handle;
     try {
-      const content = await fs.readFile(fullPath, { encoding: 'utf8', ...options });
+      // O_NOFOLLOWフラグでシンボリックリンクを拒否（TOCTOU攻撃対策）
+      handle = await fs.open(fullPath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+      const content = await handle.readFile({ encoding, signal });
 
       // キャッシュに保存
       if (options.useCache) {
@@ -100,7 +119,14 @@ export class FileUtilities extends EventEmitter {
       if (error.code === 'ENOENT') {
         throw new Error(`File not found: ${filePath}`);
       }
+      if (error.code === 'ELOOP') {
+        throw new Error('Security violation: symbolic link detected in file access');
+      }
       throw error;
+    } finally {
+      if (handle) {
+        await handle.close();
+      }
     }
   }
 
