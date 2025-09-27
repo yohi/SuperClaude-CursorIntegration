@@ -110,8 +110,9 @@ test..config..*
 temp*/
 tmp*/
 test-*/
-/normal/
-/subdir/
+# テスト用の一時ディレクトリ（具体的なパスのみ）
+tests/fixtures/normal/
+tests/fixtures/subdir/
 config..backup/
 document..backup/
 logs/app..*.log

@@ -122,7 +122,7 @@ describe('CursorBridge Integration Tests', () => {
       const result = await bridge.dispatchCommand('research', ['test query']);
 
       expect(mockCommandBridge.validateCommand).toHaveBeenCalledWith('research');
-      expect(mockCommandBridge.executeCommand).toHaveBeenCalledWith('research', ['test query']);
+      expect(mockCommandBridge.executeCommand).toHaveBeenCalledWith('research', ['test query'], expect.objectContaining({ signal: expect.any(AbortSignal) }));
       expect(result.success).toBe(true);
     });
 

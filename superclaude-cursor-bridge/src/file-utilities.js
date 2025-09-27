@@ -427,7 +427,10 @@ export class FileUtilities extends EventEmitter {
 
     // 解決済みパスが baseDir の外側にある場合（path.relative による安全な判定）
     const rel = path.relative(this.baseDir, resolvedTarget);
-    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+
+    // ファイル名自体が .. で始まる場合（隠しファイル）は除外
+    // パス区切りを含む .. の場合のみパストラバーサルとして判定
+    if ((rel.startsWith('..') && rel.includes('/')) || path.isAbsolute(rel)) {
       throw new Error('Security violation: path traversal detected');
     }
 
