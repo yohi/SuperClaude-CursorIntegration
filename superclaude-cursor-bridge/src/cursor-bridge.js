@@ -93,6 +93,9 @@ class CursorBridge {
       if (!commandName || typeof commandName !== 'string') {
         throw new Error('Command name must be a non-empty string');
       }
+      if (!Array.isArray(args)) {
+        throw new Error('args must be an array');
+      }
 
       // CommandBridgeが利用可能かチェック
       if (!this.commandBridge || typeof this.commandBridge.validateCommand !== 'function') {
@@ -105,16 +108,29 @@ class CursorBridge {
       }
 
       // コマンド実行の開始をログ
-      console.log(`Dispatching command: ${commandName} with args:`, args);
+      console.log(
+        `Dispatching command: ${commandName} (args count: ${
+          Array.isArray(args) ? args.length : 'n/a'
+        })`
+      );
 
       // 進行状況のコールバック設定
       const onProgress = options.onProgress || (() => {});
 
-      // コマンドを実行
-      const result = await this.commandBridge.executeCommand(commandName, args);
+      // AbortControllerを作成して実行中コマンドとして登録
+      const controller = new AbortController();
+      this.runningCommands.set(commandName, controller);
 
-      console.log(`Command ${commandName} completed successfully`);
-      return result;
+      try {
+        // コマンドを実行
+        const result = await this.commandBridge.executeCommand(commandName, args, { signal: controller.signal });
+
+        console.log(`Command ${commandName} completed successfully`);
+        return result;
+      } finally {
+        // 実行完了時にrunningCommandsから削除
+        this.runningCommands.delete(commandName);
+      }
 
     } catch (error) {
       console.error(`Command execution failed: ${commandName}`, error.message);
@@ -162,6 +178,25 @@ class CursorBridge {
    * @returns {string} セッションID
    */
   createSession() {
+    // 上限制御：期限切れ掃除→最古のセッションを退避
+    if (this.sessions.size >= this.config.maxSessions) {
+      this.cleanupSessions(false);
+      if (this.sessions.size >= this.config.maxSessions) {
+        let oldestId = null;
+        let oldestTs = Number.POSITIVE_INFINITY;
+        for (const [id, s] of this.sessions) {
+          if (s.lastActivity < oldestTs) {
+            oldestTs = s.lastActivity;
+            oldestId = id;
+          }
+        }
+        if (oldestId) {
+          this.sessions.delete(oldestId);
+          console.log(`Evicted oldest session to respect maxSessions: ${oldestId}`);
+        }
+      }
+    }
+
     const sessionId = uuidv4();
     const session = {
       id: sessionId,
@@ -228,12 +263,14 @@ class CursorBridge {
    * @param {string} commandName - キャンセルするコマンド名
    */
   cancelCommand(commandName) {
-    const runningCommand = this.runningCommands.get(commandName);
-    if (runningCommand) {
-      // コマンドキャンセルロジック（実装は後で詳細化）
-      console.log(`Cancelling command: ${commandName}`);
+    const controller = this.runningCommands.get(commandName);
+    if (controller) {
+      controller.abort();
       this.runningCommands.delete(commandName);
+      console.log(`Command ${commandName} cancelled`);
+      return { success: true, message: `Command ${commandName} cancelled` };
     }
+    return { success: false, message: `Command ${commandName} not found` };
   }
 
   /**

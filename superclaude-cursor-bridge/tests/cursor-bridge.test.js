@@ -4,7 +4,6 @@
  */
 
 import { jest, describe, test, beforeEach, expect } from '@jest/globals';
-import CursorBridge from '../src/cursor-bridge.js';
 
 // CommandBridge と ConfigManager のモックを手動で作成
 const mockCommandBridge = {
@@ -30,11 +29,12 @@ jest.unstable_mockModule('../src/config-manager.js', () => ({
 
 describe('CursorBridge', () => {
   let cursorBridge;
+  let CursorBridge;
 
-  beforeEach(() => {
-    // モックをリセット
+  beforeEach(async () => {
+    jest.resetModules();
     jest.clearAllMocks();
-
+    ({ default: CursorBridge } = await import('../src/cursor-bridge.js'));
     cursorBridge = new CursorBridge();
   });
 
@@ -208,7 +208,8 @@ describe('CursorBridge', () => {
   });
 
   describe('Error Handling', () => {
-    test('should handle initialization errors gracefully', () => {
+    test('should handle initialization errors gracefully', async () => {
+      const { default: CommandBridge } = await import('../src/command-bridge.js');
       CommandBridge.mockImplementation(() => {
         throw new Error('Failed to initialize CommandBridge');
       });

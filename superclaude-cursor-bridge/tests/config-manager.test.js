@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { ConfigManager } from '../src/config-manager.js';
+import ConfigManager from '../src/config-manager.js';
 import fs from 'fs/promises';
 import path from 'path';
 

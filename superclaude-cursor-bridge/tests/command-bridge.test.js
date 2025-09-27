@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { CommandBridge } from '../src/command-bridge.js';
+import CommandBridge from '../src/command-bridge.js';
 
 describe('Task 2.2: Command Bridge - 受入基準テスト', () => {
   let commandBridge;

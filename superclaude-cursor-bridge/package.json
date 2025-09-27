@@ -10,7 +10,11 @@
     "test:coverage": "NODE_OPTIONS=\"--experimental-vm-modules\" jest --coverage",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix",
-    "start": "node index.js"
+    "start": "node index.js",
+    "cleanup": "node scripts/cleanup.js",
+    "cleanup:auto": "node scripts/cleanup.js --yes",
+    "posttest": "npm run cleanup:auto",
+    "precommit": "npm run cleanup:auto && npm run lint"
   },
   "dependencies": {
     "chokidar": "^3.6.0",

@@ -82,6 +82,25 @@ npm run lint
 npm run lint:fix
 ```
 
+### クリーンアップ
+
+```bash
+# 不要ファイルの確認と削除（対話式）
+npm run cleanup
+
+# 自動削除（CI/CD用）
+npm run cleanup:auto
+```
+
+**自動削除されるファイル:**
+- 一時ファイル: `*.tmp`, `*.temp`, `*.swp`, `*.swo`, `*~`
+- システムファイル: `.DS_Store`, `Thumbs.db`
+- テスト成果物: `coverage/`, `test-results/`, `.nyc_output/`
+- ログファイル: `debug.log`, `error.log`
+
+**保護されるファイル:**
+- `node_modules/`, `.git/`, `src/`, `tests/`, `scripts/`, `.claude/`は削除されません
+
 ## アーキテクチャ
 
 ```

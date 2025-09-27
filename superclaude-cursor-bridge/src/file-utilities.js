@@ -415,7 +415,8 @@ export class FileUtilities extends EventEmitter {
     const normalized = this.normalizePath(filePath);
 
     // 正規化後の追加チェック
-    const normalizedSegments = normalized.split(path.sep).filter(segment => segment !== '');
+    // クロスプラットフォーム対応: 正規化によって統一された '/' セパレータを使用
+    const normalizedSegments = normalized.split('/').filter(segment => segment !== '');
     if (normalizedSegments.some(segment => segment === '..')) {
       throw new Error('Security violation: path traversal detected');
     }

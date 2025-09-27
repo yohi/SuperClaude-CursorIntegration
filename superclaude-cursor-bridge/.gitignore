@@ -103,3 +103,32 @@ file..config
 myfile..*
 test..config..*
 *_subdir/
+
+# Test temporary directories and files
+*..backup/
+*..backup
+temp*/
+tmp*/
+test-*/
+/normal/
+/subdir/
+config..backup/
+document..backup/
+logs/app..*.log
+
+# Jest and test artifacts
+coverage/
+test-results/
+jest-*.json
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Editor backup files
+*.bak
+*.backup
+*~

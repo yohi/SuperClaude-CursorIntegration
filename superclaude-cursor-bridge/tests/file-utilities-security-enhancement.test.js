@@ -42,7 +42,7 @@ describe('File Utilities - セキュリティ強化テスト', () => {
       for (const filename of validFilenames) {
         // ファイルを作成
         const content = `Test content for ${filename}`;
-        await expect(fileUtils.writeFile(filename, content)).resolves.not.toThrow();
+        await expect(fileUtils.writeFile(filename, content)).resolves.toBeUndefined();
 
         // ファイルを読み取り
         const readContent = await fileUtils.readFile(filename);
@@ -102,7 +102,7 @@ describe('File Utilities - セキュリティ強化テスト', () => {
             await fileUtils.createDirectory(dirPath);
           }
 
-          await expect(fileUtils.writeFile(testCase.path, 'test')).resolves.not.toThrow();
+          await expect(fileUtils.writeFile(testCase.path, 'test')).resolves.toBeUndefined();
         } else {
           // 拒否されるパスの場合
           await expect(fileUtils.writeFile(testCase.path, 'test')).rejects.toThrow(
@@ -137,7 +137,7 @@ describe('File Utilities - セキュリティ強化テスト', () => {
           if (dirPath !== '.' && dirPath !== '') {
             await fileUtils.createDirectory(dirPath);
           }
-          await expect(fileUtils.writeFile(variation.path, 'test')).resolves.not.toThrow();
+          await expect(fileUtils.writeFile(variation.path, 'test')).resolves.toBeUndefined();
         }
       }
     });
