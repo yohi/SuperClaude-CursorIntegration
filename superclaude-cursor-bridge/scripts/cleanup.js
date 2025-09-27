@@ -48,25 +48,22 @@ const PROTECTED_DIRS = [
  * glob風パターンマッチング（簡易版）
  */
 function matchPattern(filename, pattern) {
-  // ディレクトリパターン（末尾に/がある）の処理
-  if (pattern.endsWith('/') && !filename.endsWith('/')) {
-    return false;
+  const dirPattern = pattern.endsWith('/');
+  const normalized = pattern.replace(/\/$/, '');
+
+  // 特殊文字をエスケープ（* と ? は後段でワイルドカード化）
+  const esc = (s) => s.replace(/[-/\\^$+?.()|[\]{}]/g, '\\$&');
+  let safe = esc(normalized)
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.');
+
+  // ディレクトリ指定は配下全体も対象にする
+  if (dirPattern) {
+    safe = `${safe}(?:\\/.*)?`;
   }
 
-  // パターンの安全性チェック - 危険な文字をエスケープ
-  const safePattern = pattern
-    // 特殊な正規表現文字をエスケープ
-    .replace(/[$()+[\]{}|^]/g, '\\$&')
-    .replace(/\./g, '\\.')
-    // ワイルドカード文字のみ処理
-    .replace(/\\\*/g, '.*')  // エスケープされた*を元に戻してから処理
-    .replace(/\\\?/g, '.')   // エスケープされた?を元に戻してから処理
-    .replace(/\/$/, ''); // 末尾のスラッシュを削除
-
-  const filenameToMatch = filename.replace(/\/$/, '');
-
   try {
-    return new RegExp(`^${safePattern}$`).test(filenameToMatch);
+    return new RegExp(`^${safe}$`).test(filename);
   } catch (error) {
     // 正規表現が無効な場合は安全側に倒してfalseを返す
     console.warn(`Invalid pattern: ${pattern}`, error.message);
@@ -131,7 +128,7 @@ async function findFilesToDelete(dir, relativePath = '') {
 async function deleteItem(item) {
   try {
     if (item.isDirectory) {
-      await fs.rmdir(item.path, { recursive: true });
+      await fs.rm(item.path, { recursive: true, force: true });
       console.log(`🗂️  Deleted directory: ${item.relativePath}`);
     } else {
       await fs.unlink(item.path);
@@ -169,6 +166,10 @@ async function main() {
   const isCI = process.env.CI || process.argv.includes('--yes') || process.argv.includes('-y');
 
   if (!isCI) {
+    if (!process.stdin.isTTY) {
+      console.log('\nℹ️ Non-TTY detected. Re-run with --yes to auto-confirm.');
+      return;
+    }
     console.log('\n❓ Delete these files? (y/N)');
     process.stdin.setRawMode(true);
     process.stdin.resume();

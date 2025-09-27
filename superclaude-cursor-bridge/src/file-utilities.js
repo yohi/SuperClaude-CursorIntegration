@@ -425,8 +425,9 @@ export class FileUtilities extends EventEmitter {
     // baseDir に対する解決済みパスを計算
     const resolvedTarget = path.resolve(this.baseDir, normalized);
 
-    // 解決済みパスが baseDir の外側にある場合
-    if (!resolvedTarget.startsWith(path.resolve(this.baseDir))) {
+    // 解決済みパスが baseDir の外側にある場合（path.relative による安全な判定）
+    const rel = path.relative(this.baseDir, resolvedTarget);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
       throw new Error('Security violation: path traversal detected');
     }
 
