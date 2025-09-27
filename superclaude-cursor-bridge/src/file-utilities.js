@@ -272,10 +272,12 @@ export class FileUtilities extends EventEmitter {
     const watcher = watch(fullPath, { ignoreInitial: true });
 
     watcher.on('change', () => {
+      this.fileCache.delete(safePath);
       this.emit('fileChanged', { filePath: safePath });
     });
 
     watcher.on('unlink', () => {
+      this.fileCache.delete(safePath);
       this.emit('fileDeleted', { filePath: safePath });
     });
 
