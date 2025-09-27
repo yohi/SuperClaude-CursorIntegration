@@ -193,24 +193,41 @@ async function main() {
   // 削除確認（CI環境では自動実行）
   const isCI = process.env.CI || process.argv.includes('--yes') || process.argv.includes('-y');
 
+  let answer = true; // CI環境やフラグが設定されている場合はデフォルトでtrue
+
   if (!isCI) {
     if (!process.stdin.isTTY) {
       console.log('\nℹ️ Non-TTY detected. Re-run with --yes to auto-confirm.');
       return;
     }
     console.log('\n❓ Delete these files? (y/N)');
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
 
-    const answer = await new Promise(resolve => {
-      process.stdin.once('data', data => {
-        const input = data.toString().trim().toLowerCase();
-        resolve(input === 'y' || input === 'yes');
+    try {
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+
+      answer = await new Promise(resolve => {
+        process.stdin.once('data', data => {
+          const input = data.toString().trim().toLowerCase();
+          resolve(input === 'y' || input === 'yes');
+        });
       });
-    });
-
-    process.stdin.setRawMode(false);
-    process.stdin.pause();
+    } catch (error) {
+      // Raw mode設定に失敗した場合（TTY関連の問題）
+      console.log('\nℹ️ TTY mode error. Re-run with --yes to auto-confirm.');
+      answer = false;
+    } finally {
+      // cleanup処理を try-catch で囲む
+      try {
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(false);
+          process.stdin.pause();
+        }
+      } catch (cleanupError) {
+        // cleanup時のエラーは警告のみ
+        console.warn('Warning: Error during stdin cleanup:', cleanupError.message);
+      }
+    }
 
     if (!answer) {
       console.log('❌ Cleanup cancelled');

@@ -429,6 +429,7 @@ export class FileUtilities extends EventEmitter {
     const rel = path.relative(this.baseDir, resolvedTarget);
 
     // パストラバーサル検出: 最初のセグメントが .. の場合
+    // クロスプラットフォーム対応: Windows と Unix の両方のパスセパレータを処理
     const relSegments = rel.split(/[\\/]+/).filter(Boolean);
     if ((relSegments.length > 0 && relSegments[0] === '..') || path.isAbsolute(rel)) {
       throw new Error('Security violation: path traversal detected');
@@ -443,9 +444,11 @@ export class FileUtilities extends EventEmitter {
     try {
       targetRealPath = realpathSync(resolvedTarget);
       // ファイルターゲットのrealpathが取得できた場合、それを検証
+      // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
+      const relativeFromBase = path.relative(this.baseDirRealPath, targetRealPath);
       if (
         targetRealPath !== this.baseDirRealPath &&
-        !targetRealPath.startsWith(`${this.baseDirRealPath}${path.sep}`)
+        (relativeFromBase.startsWith('..') || path.isAbsolute(relativeFromBase))
       ) {
         throw new Error('Security violation: symlink escape detected');
       }
@@ -463,9 +466,11 @@ export class FileUtilities extends EventEmitter {
           }
         }
 
+        // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
+        const relativeParentFromBase = path.relative(this.baseDirRealPath, parentRealPath);
         if (
           parentRealPath !== this.baseDirRealPath &&
-          !parentRealPath.startsWith(`${this.baseDirRealPath}${path.sep}`)
+          (relativeParentFromBase.startsWith('..') || path.isAbsolute(relativeParentFromBase))
         ) {
           throw new Error('Security violation: symlink escape detected');
         }

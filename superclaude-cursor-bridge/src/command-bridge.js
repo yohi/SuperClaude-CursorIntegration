@@ -360,16 +360,16 @@ class CommandBridge {
     const { command: scCommand } = this.translateCommand(commandName, args);
     const normalizedArgs = this.normalizeParameters(commandName, args);
 
-    try {
-      // AbortSignalのリスナー設定
-      let abortHandler;
-      if (options.signal) {
-        abortHandler = () => {
-          throw new Error(`Command '${commandName}' was cancelled`);
-        };
-        options.signal.addEventListener('abort', abortHandler);
-      }
+    // AbortSignalのリスナー設定（スコープをメソッド全体に拡張）
+    let abortHandler;
+    if (options.signal) {
+      abortHandler = () => {
+        throw new Error(`Command '${commandName}' was cancelled`);
+      };
+      options.signal.addEventListener('abort', abortHandler);
+    }
 
+    try {
       // 実際のSuperClaude CLI実行（現在はモック実装）
       // TODO: 実際のSuperClaude CLIプロセス呼び出しを実装
       const result = await this._executeSuperClaudeCommand(scCommand, normalizedArgs, options);
@@ -377,20 +377,20 @@ class CommandBridge {
       // 実行履歴を記録
       this.recordExecution(commandName, args, result);
 
-      // AbortSignalリスナーをクリーンアップ
-      if (options.signal && abortHandler) {
-        options.signal.removeEventListener('abort', abortHandler);
-      }
-
       return result;
     } catch (error) {
-      // AbortSignalリスナーをクリーンアップ
-      if (options.signal && abortHandler) {
-        options.signal.removeEventListener('abort', abortHandler);
+      // キャンセル時の追加チェック
+      if (options.signal?.aborted) {
+        throw new Error(`Command '${commandName}' was cancelled`);
       }
 
       // エラーを再スロー
       throw error;
+    } finally {
+      // AbortSignalリスナーをクリーンアップ（finally ブロックで確実に実行）
+      if (options.signal && abortHandler) {
+        options.signal.removeEventListener('abort', abortHandler);
+      }
     }
   }
 
