@@ -12,8 +12,9 @@ jest.mock('../src/command-bridge.js');
 jest.mock('../src/performance-monitor.js');
 jest.mock('../src/progress-manager.js');
 jest.mock('../src/result-cache.js');
+let uuidCounter = 0;
 jest.mock('uuid', () => ({
-  v4: jest.fn(() => 'test-uuid-1234')
+  v4: jest.fn(() => `test-uuid-${++uuidCounter}`)
 }));
 
 describe('OptimizedCommandBridge', () => {
@@ -266,6 +267,7 @@ describe('OptimizedCommandBridge', () => {
     });
 
     it('should handle abort signal during execution', async () => {
+      jest.useFakeTimers();
       const abortController = new AbortController();
 
       const resultPromise = bridge._executeOptimizedCommand(
@@ -275,10 +277,12 @@ describe('OptimizedCommandBridge', () => {
         'test-id'
       );
 
-      // Abort after starting
-      setTimeout(() => abortController.abort(), 50);
+      // タイマーを進めてabortを発生させる
+      jest.advanceTimersByTime(50);
+      abortController.abort();
 
       await expect(resultPromise).rejects.toThrow('Command execution was aborted');
+      jest.useRealTimers();
     });
   });
 

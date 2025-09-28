@@ -214,6 +214,8 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
       // 少し待ってから確認
       await new Promise(resolve => setTimeout(resolve, 100));
 
+      expect(mockReloadListener).toHaveBeenCalled();
+
       configWithWatcher.cleanup();
     });
 
@@ -233,6 +235,8 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
 
       // 少し待ってから確認
       await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(mockReloadListener).toHaveBeenCalled();
 
       configWithWatcher.cleanup();
     });

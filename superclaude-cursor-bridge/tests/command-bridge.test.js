@@ -147,13 +147,19 @@ describe('Task 2.2: Command Bridge - 受入基準テスト', () => {
     });
 
     test('実行中のAbortSignalキャンセル', async () => {
+      jest.useFakeTimers();
       const controller = new AbortController();
 
-      // 少し後にキャンセル
-      setTimeout(() => controller.abort(), 50);
+      const promise = commandBridge.executeCommand('help', [], { signal: controller.signal });
 
-      await expect(commandBridge.executeCommand('help', [], { signal: controller.signal }))
+      // タイマーを進めてキャンセルを発生させる
+      jest.advanceTimersByTime(50);
+      controller.abort();
+
+      await expect(promise)
         .rejects.toThrow("was cancelled");
+
+      jest.useRealTimers();
     });
 
     test('executeCommand内での検証エラー', async () => {
