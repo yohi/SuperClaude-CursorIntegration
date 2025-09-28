@@ -124,19 +124,28 @@ async function initializeConfiguration() {
   // SuperClaude CLIパスの自動検出と設定
   try {
     const { stdout } = await new Promise((resolve, reject) => {
-      const process = spawn('which', ['SuperClaude'], { shell: true });
+      // Windows環境の判定とコマンドの選択
+      const isWindows = process.platform === 'win32';
+      const command = isWindows ? 'where' : 'which';
+      const args = ['SuperClaude'];
+
+      const childProcess = spawn(command, args, { shell: true });
       let stdout = '';
 
-      process.stdout.on('data', (data) => {
+      childProcess.stdout.on('data', (data) => {
         stdout += data.toString();
       });
 
-      process.on('close', (code) => {
+      childProcess.on('close', (code) => {
         if (code === 0) {
           resolve({ stdout: stdout.trim() });
         } else {
-          reject(new Error('SuperClaude CLI path not found'));
+          reject(new Error(`SuperClaude CLI path not found using ${command} command`));
         }
+      });
+
+      childProcess.on('error', (error) => {
+        reject(new Error(`Failed to execute ${command} command: ${error.message}`));
       });
     });
 
@@ -149,7 +158,7 @@ async function initializeConfiguration() {
       console.log(`✅ SuperClaude CLIパスが設定されました: ${stdout}`);
     }
   } catch (error) {
-    console.log('⚠️  SuperClaude CLIパスの自動検出に失敗しました');
+    console.log('⚠️  SuperClaude CLIパスの自動検出に失敗しました:', error.message);
   }
 
   console.log('✅ 設定の初期化が完了しました');

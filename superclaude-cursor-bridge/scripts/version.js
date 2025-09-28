@@ -79,7 +79,19 @@ function updatePackageVersion(newVersion) {
  * @returns {string} 新しいバージョン
  */
 function incrementVersion(currentVersion, type) {
-  const [major, minor, patch] = currentVersion.split('.').map(Number);
+  // 厳密な3つの数値コンポーネントのバージョン形式を検証
+  const versionRegex = /^\s*(\d+)\.(\d+)\.(\d+)\s*$/;
+  const match = currentVersion.match(versionRegex);
+
+  if (!match) {
+    throw new Error(`Unsupported version format: must be MAJOR.MINOR.PATCH. Received: "${currentVersion}"`);
+  }
+
+  // 正規表現のキャプチャグループから数値を抽出
+  const [, majorStr, minorStr, patchStr] = match;
+  const major = Number(majorStr);
+  const minor = Number(minorStr);
+  const patch = Number(patchStr);
 
   switch (type) {
     case 'major':
