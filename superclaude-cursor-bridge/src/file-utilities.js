@@ -403,11 +403,17 @@ export class FileUtilities extends EventEmitter {
     // 正規化前のパストラバーサルチェック（重要！）
     // 正規化によって隠される可能性のある危険なパターンを事前に検出
     // ただし、ファイル名の一部として .. を含む場合は許可する
-    const rawSegments = filePath.split(/[/\\]/).filter(segment => segment !== '' && segment !== '.');
+    const rawSegments = filePath.split(/[/\\]/).filter(segment => {
+      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+      return cleaned !== '' && cleaned !== '.';
+    });
 
-    // セグメントが完全に ".." と一致する場合のみ拒否
+    // セグメントが完全に ".." と一致する場合のみ拒否（Windows バイパス対策）
     // ファイル名に .. が含まれている場合（例: "file..txt"）は許可
-    if (rawSegments.some(segment => segment === '..')) {
+    if (rawSegments.some(segment => {
+      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+      return cleaned === '..';
+    })) {
       throw new Error('Security violation: path traversal detected');
     }
 
@@ -416,8 +422,14 @@ export class FileUtilities extends EventEmitter {
 
     // 正規化後の追加チェック
     // クロスプラットフォーム対応: 正規化によって統一された '/' セパレータを使用
-    const normalizedSegments = normalized.split('/').filter(segment => segment !== '');
-    if (normalizedSegments.some(segment => segment === '..')) {
+    const normalizedSegments = normalized.split('/').filter(segment => {
+      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+      return cleaned !== '';
+    });
+    if (normalizedSegments.some(segment => {
+      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+      return cleaned === '..';
+    })) {
       throw new Error('Security violation: path traversal detected');
     }
 
@@ -430,8 +442,11 @@ export class FileUtilities extends EventEmitter {
 
     // パストラバーサル検出: 最初のセグメントが .. の場合
     // クロスプラットフォーム対応: Windows と Unix の両方のパスセパレータを処理
-    const relSegments = rel.split(/[\\/]+/).filter(Boolean);
-    if ((relSegments.length > 0 && relSegments[0] === '..') || path.isAbsolute(rel)) {
+    const relSegments = rel.split(/[\\/]+/).filter(segment => {
+      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+      return cleaned !== '';
+    });
+    if ((relSegments.length > 0 && relSegments[0].replace(/[. ]+$/, '') === '..') || path.isAbsolute(rel)) {
       throw new Error('Security violation: path traversal detected');
     }
 
@@ -446,11 +461,14 @@ export class FileUtilities extends EventEmitter {
       // ファイルターゲットのrealpathが取得できた場合、それを検証
       // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
       const relativeFromBase = path.relative(this.baseDirRealPath, targetRealPath);
-      const relativeFromBaseSegments = relativeFromBase.split(/[\\/]+/).filter(Boolean);
+      const relativeFromBaseSegments = relativeFromBase.split(/[\\/]+/).filter(segment => {
+        const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+        return cleaned !== '';
+      });
       if (
         targetRealPath !== this.baseDirRealPath &&
         (
-          (relativeFromBaseSegments.length > 0 && relativeFromBaseSegments[0] === '..') ||
+          (relativeFromBaseSegments.length > 0 && relativeFromBaseSegments[0].replace(/[. ]+$/, '') === '..') ||
           path.isAbsolute(relativeFromBase)
         )
       ) {
@@ -472,11 +490,14 @@ export class FileUtilities extends EventEmitter {
 
         // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
         const relativeParentFromBase = path.relative(this.baseDirRealPath, parentRealPath);
-        const relativeParentSegments = relativeParentFromBase.split(/[\\/]+/).filter(Boolean);
+        const relativeParentSegments = relativeParentFromBase.split(/[\\/]+/).filter(segment => {
+          const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+          return cleaned !== '';
+        });
         if (
           parentRealPath !== this.baseDirRealPath &&
           (
-            (relativeParentSegments.length > 0 && relativeParentSegments[0] === '..') ||
+            (relativeParentSegments.length > 0 && relativeParentSegments[0].replace(/[. ]+$/, '') === '..') ||
             path.isAbsolute(relativeParentFromBase)
           )
         ) {
