@@ -446,9 +446,13 @@ export class FileUtilities extends EventEmitter {
       // ファイルターゲットのrealpathが取得できた場合、それを検証
       // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
       const relativeFromBase = path.relative(this.baseDirRealPath, targetRealPath);
+      const relativeFromBaseSegments = relativeFromBase.split(/[\\/]+/).filter(Boolean);
       if (
         targetRealPath !== this.baseDirRealPath &&
-        (relativeFromBase.startsWith('..') || path.isAbsolute(relativeFromBase))
+        (
+          (relativeFromBaseSegments.length > 0 && relativeFromBaseSegments[0] === '..') ||
+          path.isAbsolute(relativeFromBase)
+        )
       ) {
         throw new Error('Security violation: symlink escape detected');
       }
@@ -468,9 +472,13 @@ export class FileUtilities extends EventEmitter {
 
         // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
         const relativeParentFromBase = path.relative(this.baseDirRealPath, parentRealPath);
+        const relativeParentSegments = relativeParentFromBase.split(/[\\/]+/).filter(Boolean);
         if (
           parentRealPath !== this.baseDirRealPath &&
-          (relativeParentFromBase.startsWith('..') || path.isAbsolute(relativeParentFromBase))
+          (
+            (relativeParentSegments.length > 0 && relativeParentSegments[0] === '..') ||
+            path.isAbsolute(relativeParentFromBase)
+          )
         ) {
           throw new Error('Security violation: symlink escape detected');
         }

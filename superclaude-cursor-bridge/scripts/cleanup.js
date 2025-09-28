@@ -68,14 +68,28 @@ function matchPattern(filename, pattern) {
   const dirPattern = pattern.endsWith('/');
   const normalized = pattern.replace(/\/$/, '');
 
+  // 文字クラス [0-9] などをプレースホルダに退避
+  const charClasses = [];
+  let placeholderIndex = 0;
+  const withPlaceholders = normalized.replace(/\[([^\]]+)\]/g, (_, inner) => {
+    const token = `__CLEANUP_CHAR_CLASS_${placeholderIndex++}__`;
+    charClasses.push(`[${inner}]`);
+    return token;
+  });
+
   // 特殊文字をエスケープ（ただし * と ? は一旦保持）
-  let safe = normalized.replace(/[-/\\^$+.()|[\]{}]/g, '\\$&');
+  let safe = withPlaceholders.replace(/[-/\\^$+.()|{}]/g, '\\$&');
 
   // .. を正規表現用にエスケープ
   safe = safe.replace(/\.\./g, '\\.\\.');
 
   // * と ? をワイルドカードに変換
   safe = safe.replace(/\*/g, '.*').replace(/\?/g, '.');
+
+  // 文字クラスを元に戻す
+  charClasses.forEach((cls, index) => {
+    safe = safe.replace(`__CLEANUP_CHAR_CLASS_${index}__`, cls);
+  });
 
   // ディレクトリ指定は配下全体も対象にする
   if (dirPattern) {
