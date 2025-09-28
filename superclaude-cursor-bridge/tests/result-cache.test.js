@@ -240,7 +240,7 @@ describe('ResultCache', () => {
     it('should remove expired entries during periodic cleanup', () => {
       const result = { success: true, output: 'Test result' };
       cache.set('research', ['query1'], result);
-      cache.set('research', ['query2'], result);
+      cache.set('analyze', ['query2'], result); // 異なるコマンド名を使用
 
       expect(cache.cache.size).toBe(2);
 

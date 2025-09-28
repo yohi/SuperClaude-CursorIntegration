@@ -233,11 +233,16 @@ export default class ResultCache {
    */
   _cleanup() {
     const now = Date.now();
+    const expiredKeys = [];
+
     for (const [key, entry] of this.cache.entries()) {
       if (entry.expiresAt < now) {
-        this.cache.delete(key);
+        expiredKeys.push(key);
       }
     }
+
+    // 別のループで削除を実行
+    expiredKeys.forEach(key => this.cache.delete(key));
   }
 
   /**

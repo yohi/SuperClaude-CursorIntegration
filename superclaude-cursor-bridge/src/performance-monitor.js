@@ -85,12 +85,13 @@ export default class PerformanceMonitor {
     if (startMemoryUsage && endMemoryUsage) {
       const memoryDelta = endMemoryUsage.rss - startMemoryUsage.rss;
       const memoryDeltaThreshold = 256 * 1024 * 1024; // 256MB増加をしきい値とする
+      const highMemoryThreshold = 300 * 1024 * 1024; // 300MB以上は高警告
 
       if (memoryDelta > memoryDeltaThreshold) {
         warnings.push({
           type: 'memory',
           message: `Memory increased by ${Math.round(memoryDelta / 1024 / 1024)}MB during execution`,
-          severity: memoryDelta > memoryDeltaThreshold * 2 ? 'high' : 'medium'
+          severity: memoryDelta >= highMemoryThreshold ? 'high' : 'medium'
         });
       }
     } else {
