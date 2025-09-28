@@ -70,6 +70,10 @@ export default class OptimizedCommandBridge extends CommandBridge {
       { totalSteps: this._estimateSteps(commandName) }
     );
 
+    // スコープ外で変数を宣言してfinally節でのエラーマスキングを防ぐ
+    let combinedOptions;
+    let externalAbortListener;
+
     try {
       // コマンドとパラメータの検証
       this.validateParameters(commandName, args);
@@ -98,7 +102,6 @@ export default class OptimizedCommandBridge extends CommandBridge {
       });
 
       // AbortSignalの統合 - 外部signalと内部signalを結合
-      let externalAbortListener;
       if (options.signal) {
         // 外部signalが発火したら内部AbortControllerもabortする
         externalAbortListener = () => {
@@ -107,7 +110,7 @@ export default class OptimizedCommandBridge extends CommandBridge {
         options.signal.addEventListener('abort', externalAbortListener, { once: true });
       }
 
-      const combinedOptions = {
+      combinedOptions = {
         ...options,
         signal: progressContext.abortController.signal,
         _cleanup: () => {
@@ -169,8 +172,8 @@ export default class OptimizedCommandBridge extends CommandBridge {
 
       throw error;
     } finally {
-      // リスナーのクリーンアップを確実に実行
-      if (combinedOptions._cleanup) {
+      // リスナーのクリーンアップを確実に実行（変数の存在チェック）
+      if (combinedOptions && typeof combinedOptions._cleanup === 'function') {
         combinedOptions._cleanup();
       }
     }
