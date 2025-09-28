@@ -170,7 +170,11 @@ export class FileUtilities extends EventEmitter {
       const fullPath = path.join(this.baseDir, safePath);
       await fs.access(fullPath);
       return true;
-    } catch {
+    } catch (error) {
+      // セキュリティエラーは再スローし、ファイルアクセスエラーのみfalseを返す
+      if (error.message && error.message.includes('Security violation')) {
+        throw error;
+      }
       return false;
     }
   }
@@ -186,7 +190,11 @@ export class FileUtilities extends EventEmitter {
       const fullPath = path.join(this.baseDir, safePath);
       const stat = await fs.stat(fullPath);
       return stat.isDirectory();
-    } catch {
+    } catch (error) {
+      // セキュリティエラーは再スローし、ファイルアクセスエラーのみfalseを返す
+      if (error.message && error.message.includes('Security violation')) {
+        throw error;
+      }
       return false;
     }
   }
@@ -392,20 +400,73 @@ export class FileUtilities extends EventEmitter {
       throw new Error('Path outside base directory not allowed');
     }
 
+    // 正規化前のパストラバーサルチェック（重要！）
+    // 正規化によって隠される可能性のある危険なパターンを事前に検出
+    // ただし、ファイル名の一部として .. を含む場合は許可する
+    const rawSegments = filePath.split(/[/\\]/);
+
+    // セグメントが完全に ".." と一致する場合のみ拒否（Windows バイパス対策）
+    // ファイル名に .. が含まれている場合（例: "file..txt"）は許可
+    // CRITICAL: フィルタリング前に検証を実行
+    for (const segment of rawSegments) {
+      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+      if (cleaned === '..') {
+        throw new Error('Security violation: path traversal detected');
+      }
+    }
+
+    // 安全なセグメントのみをフィルタリング（検証後）
+    const filteredRawSegments = rawSegments.filter(segment => {
+      const cleaned = segment.replace(/[. ]+$/, '');
+      return cleaned !== '' && cleaned !== '.';
+    });
+
     // 正規化
     const normalized = this.normalizePath(filePath);
+
+    // 正規化後の追加チェック
+    // クロスプラットフォーム対応: 正規化によって統一された '/' セパレータを使用
+    const normalizedSegments = normalized.split('/');
+
+    // CRITICAL: フィルタリング前に検証を実行
+    for (const segment of normalizedSegments) {
+      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+      if (cleaned === '..') {
+        throw new Error('Security violation: path traversal detected');
+      }
+    }
+
+    // 安全なセグメントのみをフィルタリング（検証後）
+    const filteredNormalizedSegments = normalizedSegments.filter(segment => {
+      const cleaned = segment.replace(/[. ]+$/, '');
+      return cleaned !== '';
+    });
 
     // クロスプラットフォーム対応のパストラバーサル検出
     // baseDir に対する解決済みパスを計算
     const resolvedTarget = path.resolve(this.baseDir, normalized);
-    const relativePath = path.relative(this.baseDir, resolvedTarget);
 
-    // パストラバーサル攻撃の検出
-    // 1. 相対パスが '..' で始まる場合は baseDir の外側
-    // 2. 解決済みパスが baseDir の外側にある場合
-    if (relativePath.startsWith('..') || !resolvedTarget.startsWith(path.resolve(this.baseDir))) {
+    // 解決済みパスが baseDir の外側にある場合（path.relative による安全な判定）
+    const rel = path.relative(this.baseDir, resolvedTarget);
+
+    // パストラバーサル検出: 最初のセグメントが .. の場合
+    // クロスプラットフォーム対応: Windows と Unix の両方のパスセパレータを処理
+    const relSegments = rel.split(/[\\/]+/);
+
+    // CRITICAL: フィルタリング前に最初のセグメントを検証
+    if (relSegments.length > 0) {
+      const firstSegmentCleaned = relSegments[0].replace(/[. ]+$/, '');
+      if (firstSegmentCleaned === '..') {
+        throw new Error('Security violation: path traversal detected');
+      }
+    }
+
+    if (path.isAbsolute(rel)) {
       throw new Error('Security violation: path traversal detected');
     }
+
+    // 相対パスを計算（空チェック用）
+    const relativePath = path.relative(this.baseDir, resolvedTarget);
 
     // シンボリックリンク経由での脱出を防ぐ
     // 1. ファイル自体がシンボリックリンクの場合をチェック
@@ -413,9 +474,17 @@ export class FileUtilities extends EventEmitter {
     try {
       targetRealPath = realpathSync(resolvedTarget);
       // ファイルターゲットのrealpathが取得できた場合、それを検証
+      // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
+      const relativeFromBase = path.relative(this.baseDirRealPath, targetRealPath);
+      const relativeFromBaseSegments = relativeFromBase.split(/[\\/]+/);
+
+      // CRITICAL: フィルタリング前に最初のセグメントを検証
       if (
         targetRealPath !== this.baseDirRealPath &&
-        !targetRealPath.startsWith(`${this.baseDirRealPath}${path.sep}`)
+        (
+          (relativeFromBaseSegments.length > 0 && relativeFromBaseSegments[0].replace(/[. ]+$/, '') === '..') ||
+          path.isAbsolute(relativeFromBase)
+        )
       ) {
         throw new Error('Security violation: symlink escape detected');
       }
@@ -433,9 +502,17 @@ export class FileUtilities extends EventEmitter {
           }
         }
 
+        // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
+        const relativeParentFromBase = path.relative(this.baseDirRealPath, parentRealPath);
+        const relativeParentSegments = relativeParentFromBase.split(/[\\/]+/);
+
+        // CRITICAL: フィルタリング前に最初のセグメントを検証
         if (
           parentRealPath !== this.baseDirRealPath &&
-          !parentRealPath.startsWith(`${this.baseDirRealPath}${path.sep}`)
+          (
+            (relativeParentSegments.length > 0 && relativeParentSegments[0].replace(/[. ]+$/, '') === '..') ||
+            path.isAbsolute(relativeParentFromBase)
+          )
         ) {
           throw new Error('Security violation: symlink escape detected');
         }

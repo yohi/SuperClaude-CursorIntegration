@@ -4,7 +4,7 @@
  * Handles translation between Cursor IDE commands and SuperClaude slash commands,
  * providing parameter validation, execution history, and command statistics.
  */
-export class CommandBridge {
+class CommandBridge {
   constructor(options = {}) {
     this.executionHistory = [];
     this.maxHistorySize = options.maxHistorySize || 100;
@@ -341,9 +341,109 @@ export class CommandBridge {
   }
 
   /**
+   * Execute SuperClaude command with abort signal support
+   * @param {string} commandName - Command name to execute
+   * @param {Array} args - Command arguments
+   * @param {Object} options - Execution options including signal
+   * @returns {Promise<Object>} Execution result
+   */
+  async executeCommand(commandName, args = [], options = {}) {
+    // コマンドとパラメータの検証
+    this.validateParameters(commandName, args);
+
+    // Abort signalの事前チェック
+    if (options.signal?.aborted) {
+      throw new Error('Command was aborted before execution');
+    }
+
+    // SuperClaudeコマンドに変換
+    const { command: scCommand } = this.translateCommand(commandName, args);
+    const normalizedArgs = this.normalizeParameters(commandName, args);
+
+    // AbortSignalのリスナー設定（スコープをメソッド全体に拡張）
+    let abortHandler;
+    if (options.signal) {
+      abortHandler = () => {
+        throw new Error(`Command '${commandName}' was cancelled`);
+      };
+      options.signal.addEventListener('abort', abortHandler);
+    }
+
+    try {
+      // 実際のSuperClaude CLI実行（現在はモック実装）
+      // TODO: 実際のSuperClaude CLIプロセス呼び出しを実装
+      const result = await this._executeSuperClaudeCommand(scCommand, normalizedArgs, options);
+
+      // 実行履歴を記録
+      this.recordExecution(commandName, args, result);
+
+      return result;
+    } catch (error) {
+      // キャンセル時の追加チェック
+      if (options.signal?.aborted) {
+        throw new Error(`Command '${commandName}' was cancelled`);
+      }
+
+      // エラーを再スロー
+      throw error;
+    } finally {
+      // AbortSignalリスナーをクリーンアップ（finally ブロックで確実に実行）
+      if (options.signal && abortHandler) {
+        options.signal.removeEventListener('abort', abortHandler);
+      }
+    }
+  }
+
+  /**
+   * Execute actual SuperClaude CLI command (mock implementation)
+   * @private
+   * @param {string} scCommand - SuperClaude command
+   * @param {Array} args - Normalized arguments
+   * @param {Object} options - Execution options
+   * @returns {Promise<Object>} Execution result
+   */
+  async _executeSuperClaudeCommand(scCommand, args, options) {
+    // AbortSignalの中間チェック
+    if (options.signal?.aborted) {
+      throw new Error('Command execution was aborted');
+    }
+
+    // モック実装 - 実際の実装では SuperClaude CLI を spawn で実行
+    return new Promise((resolve, reject) => {
+      // 非同期実行をシミュレート
+      const timeout = setTimeout(() => {
+        // 最終的なAbortSignalチェック
+        if (options.signal?.aborted) {
+          reject(new Error('Command execution was aborted'));
+          return;
+        }
+
+        resolve({
+          success: true,
+          command: scCommand,
+          args: args,
+          output: `Mock execution result for ${scCommand}`,
+          timestamp: new Date().toISOString(),
+          executionTime: Math.floor(Math.random() * 1000) + 100 // 100-1100ms
+        });
+      }, 100); // 短い実行時間をシミュレート
+
+      // AbortSignalハンドラー
+      if (options.signal) {
+        options.signal.addEventListener('abort', () => {
+          clearTimeout(timeout);
+          reject(new Error('Command execution was aborted'));
+        });
+      }
+    });
+  }
+
+  /**
    * Cleanup resources
    */
   cleanup() {
     this.executionHistory = [];
   }
 }
+
+export default CommandBridge;

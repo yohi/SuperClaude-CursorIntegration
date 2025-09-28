@@ -136,13 +136,13 @@ superclaude-cursor-bridge/
 **Duration:** 2-3週間
 **Dependencies:** Phase 2完了
 
-#### Task 3.1: Cursor Bridge Core の実装
+#### Task 3.1: Cursor Bridge Core の実装 ✅
 **Description:** Cursor IDEのチャットコマンドシステムとの統合レイヤー
 **Acceptance Criteria:**
-- [ ] Cursor IDE Chat Commands APIとの統合が完了
-- [ ] コマンド登録とディスパッチ機能が動作
-- [ ] ユーザーインターフェースとの適切な連携
-- [ ] セッション管理機能の実装
+- [x] Cursor IDE Chat Commands APIとの統合が完了
+- [x] コマンド登録とディスパッチ機能が動作
+- [x] ユーザーインターフェースとの適切な連携
+- [x] セッション管理機能の実装
 **Implementation Notes:**
 - Cursor IDEのチャットコマンド仕様に準拠した実装
 - コマンド補完とヘルプ機能の提供

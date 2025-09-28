@@ -91,3 +91,45 @@ logs
 # SuperClaude specific
 .claude/
 superclaude.log
+
+# Test files created during testing
+tests/fixtures/[0-9]*_*
+tests/fixtures/*..hidden
+tests/fixtures/config.txt
+tests/fixtures/secret
+tests/fixtures/backup..*
+tests/fixtures/document..*
+tests/fixtures/file..config
+tests/fixtures/myfile..*
+tests/fixtures/test..config..*
+tests/fixtures/*_subdir/
+
+# Test temporary directories and files
+*..backup/
+*..backup
+temp*/
+tmp*/
+test-*/
+# テスト用の一時ディレクトリ（具体的なパスのみ）
+tests/fixtures/normal/
+tests/fixtures/subdir/
+config..backup/
+document..backup/
+logs/app..*.log
+
+# Jest and test artifacts
+coverage/
+test-results/
+jest-*.json
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Editor backup files
+*.bak
+*.backup
+*~
