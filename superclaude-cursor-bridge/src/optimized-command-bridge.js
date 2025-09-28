@@ -44,10 +44,11 @@ export default class OptimizedCommandBridge extends EventEmitter {
     this.validateParameters(commandName, args);
 
     const commandId = options.commandId || randomUUID();
+    const cacheKey = this._getCacheKey(commandName, args);
 
     // Check cache first
-    if (!options.skipCache && this.resultCache.has(commandName, args)) {
-      return this.resultCache.get(commandName, args);
+    if (!options.skipCache && this.resultCache.has(cacheKey)) {
+      return this.resultCache.get(cacheKey);
     }
 
     // Start performance monitoring
@@ -66,21 +67,25 @@ export default class OptimizedCommandBridge extends EventEmitter {
 
       // Cache successful results
       if (result.success) {
-        this.resultCache.set(this._getCacheKey(commandName, args), result);
+        this.resultCache.set(cacheKey, result);
       }
 
       // Update progress to complete
       this.progressManager.completeProgress(progressId);
 
-      // End performance measurement
-      this.performanceMonitor.endMeasurement(perfContext);
+      // End performance measurement with result information
+      const measurementResult = { success: result?.success !== false };
+      this.performanceMonitor.endMeasurement(perfContext, measurementResult);
 
       return result;
 
     } catch (error) {
       // Handle errors
       this.progressManager.failProgress(progressId, error.message);
-      this.performanceMonitor.endMeasurement(perfContext);
+      this.performanceMonitor.endMeasurement(perfContext, {
+        success: false,
+        error: error.message || String(error)
+      });
       throw error;
     }
   }
