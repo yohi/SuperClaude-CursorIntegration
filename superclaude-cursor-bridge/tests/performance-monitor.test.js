@@ -8,7 +8,7 @@ import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals
 
 describe('PerformanceMonitor', () => {
   let monitor;
-  let originalProcess;
+  let memoryUsageSpy;
 
   beforeEach(() => {
     monitor = new PerformanceMonitor({
@@ -18,20 +18,16 @@ describe('PerformanceMonitor', () => {
       memoryWarning: 512 * 1024 * 1024
     });
 
-    // Mock process.memoryUsage
-    originalProcess = global.process;
-    global.process = {
-      ...originalProcess,
-      memoryUsage: jest.fn(() => ({
-        rss: 100 * 1024 * 1024, // 100MB
-        heapUsed: 50 * 1024 * 1024, // 50MB
-        heapTotal: 80 * 1024 * 1024 // 80MB
-      }))
-    };
+    // Mock process.memoryUsage with jest.spyOn
+    memoryUsageSpy = jest.spyOn(process, 'memoryUsage').mockImplementation(() => ({
+      rss: 100 * 1024 * 1024, // 100MB
+      heapUsed: 50 * 1024 * 1024, // 50MB
+      heapTotal: 80 * 1024 * 1024 // 80MB
+    }));
   });
 
   afterEach(() => {
-    global.process = originalProcess;
+    memoryUsageSpy.mockRestore();
     jest.clearAllMocks();
   });
 
