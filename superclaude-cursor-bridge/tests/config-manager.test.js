@@ -183,20 +183,21 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
         autoReload: true
       });
 
-      const mockReloadListener = jest.fn();
-      configWithWatcher.on('fileReloaded', mockReloadListener);
+      try {
+        const mockReloadListener = jest.fn();
+        configWithWatcher.on('fileReloaded', mockReloadListener);
+        const waitReload = new Promise(resolve => configWithWatcher.once('fileReloaded', resolve));
 
-      // 外部からファイルを変更
-      const configPath = path.join(tempDir, '.claude.json');
-      const newConfig = { superclaude: { cliPath: 'UpdatedPath', timeout: 45000 } };
-      await fs.writeFile(configPath, JSON.stringify(newConfig, null, 2));
+        // 外部からファイルを変更
+        const configPath = path.join(tempDir, '.claude.json');
+        const newConfig = { superclaude: { cliPath: 'UpdatedPath', timeout: 45000 } };
+        await fs.writeFile(configPath, JSON.stringify(newConfig, null, 2));
 
-      // 少し待ってから確認（ファイル監視は非同期）
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      expect(mockReloadListener).toHaveBeenCalled();
-
-      configWithWatcher.cleanup();
+        await waitReload;
+        expect(mockReloadListener).toHaveBeenCalled();
+      } finally {
+        configWithWatcher.cleanup();
+      }
     });
 
     test('ファイル監視でsettings.json変更時の処理', async () => {
@@ -330,11 +331,8 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
     });
 
     test('設定ファイル書き込みエラーの適切な処理', async () => {
-      // 読み取り専用ディレクトリを作ろうとする（権限エラーをシミュレート）
-      await expect(async () => {
-        await configManager.setSetting('test.key', 'value');
-        // 権限エラーが発生した場合の処理をテスト
-      }).not.toThrow(); // gracefulに処理されることを確認
+      // 正常に処理されることを確認（実際のエラー処理は_persistSettingsテストで検証）
+      await expect(configManager.setSetting('test.key', 'value')).resolves.toBeUndefined();
     });
 
     test('settings.jsonで無効なJSON形式の場合のエラー処理', async () => {
