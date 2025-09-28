@@ -4,8 +4,12 @@
  * Handles translation between Cursor IDE commands and SuperClaude slash commands,
  * providing parameter validation, execution history, and command statistics.
  */
-class CommandBridge {
+
+import { EventEmitter } from 'events';
+
+class CommandBridge extends EventEmitter {
   constructor(options = {}) {
+    super();
     this.executionHistory = [];
     this.maxHistorySize = options.maxHistorySize || 100;
 
