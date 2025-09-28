@@ -150,12 +150,25 @@ async function initializeConfiguration() {
     });
 
     if (stdout && fs.existsSync(settingsPath)) {
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      settings.superclaude = settings.superclaude || {};
-      settings.superclaude.cliPath = stdout;
+      // 複数行の出力から最初の有効なパスを抽出
+      const paths = stdout
+        .replace(/\r\n/g, '\n') // CRLF を LF に正規化
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
 
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-      console.log(`✅ SuperClaude CLIパスが設定されました: ${stdout}`);
+      if (paths.length > 0) {
+        const cliPath = paths[0]; // 最初の有効なパスを使用
+
+        const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+        settings.superclaude = settings.superclaude || {};
+        settings.superclaude.cliPath = cliPath;
+
+        fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        console.log(`✅ SuperClaude CLIパスが設定されました: ${cliPath}`);
+      } else {
+        console.log('⚠️  有効なSuperClaude CLIパスが見つかりませんでした');
+      }
     }
   } catch (error) {
     console.log('⚠️  SuperClaude CLIパスの自動検出に失敗しました:', error.message);
