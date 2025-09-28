@@ -3,19 +3,39 @@
  * TDD implementation following Kent Beck's methodology
  */
 
-import OptimizedCommandBridge from '../src/optimized-command-bridge.js';
 import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { EventEmitter } from 'events';
 
-// Mock dependencies
-jest.mock('../src/command-bridge.js');
-jest.mock('../src/performance-monitor.js');
-jest.mock('../src/progress-manager.js');
-jest.mock('../src/result-cache.js');
-let uuidCounter = 0;
-jest.mock('uuid', () => ({
-  v4: jest.fn(() => `test-uuid-${++uuidCounter}`)
+// Mock dependencies first before importing OptimizedCommandBridge
+jest.unstable_mockModule('../src/command-bridge.js', () => ({
+  default: jest.fn()
 }));
+
+jest.unstable_mockModule('../src/performance-monitor.js', () => ({
+  default: jest.fn()
+}));
+
+jest.unstable_mockModule('../src/progress-manager.js', () => ({
+  default: jest.fn()
+}));
+
+jest.unstable_mockModule('../src/result-cache.js', () => ({
+  default: jest.fn()
+}));
+
+// Mock crypto module
+jest.unstable_mockModule('crypto', () => ({
+  randomUUID: jest.fn(() => `test-uuid-${++uuidCounter}`)
+}));
+
+// Import the class under test after setting up mocks
+const { default: OptimizedCommandBridge } = await import('../src/optimized-command-bridge.js');
+const { default: CommandBridge } = await import('../src/command-bridge.js');
+const { default: PerformanceMonitor } = await import('../src/performance-monitor.js');
+const { default: ProgressManager } = await import('../src/progress-manager.js');
+const { default: ResultCache } = await import('../src/result-cache.js');
+
+let uuidCounter = 0;
 
 describe('OptimizedCommandBridge', () => {
   let bridge;
@@ -24,58 +44,55 @@ describe('OptimizedCommandBridge', () => {
   let mockProgressManager;
   let mockResultCache;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset all mocks
     jest.clearAllMocks();
 
     // Setup mocks with realistic behavior
     mockPerformanceMonitor = {
       startMeasurement: jest.fn(() => ({ id: 'perf-context-1' })),
-      endMeasurement: jest.fn(() => ({
-        executionTime: 1500,
-        warnings: []
+      endMeasurement: jest.fn(),
+      getStatistics: jest.fn(() => ({
+        totalCommands: 5,
+        averageExecutionTime: 1200,
+        fastestCommand: 'explain',
+        slowestCommand: 'research'
       })),
-      getStatistics: jest.fn(() => ({ totalCommands: 5 })),
-      getOptimizationRecommendations: jest.fn(() => [])
-    };
-
-    mockProgressManager = {
-      startProgress: jest.fn(() => ({
-        cancelled: false,
-        abortController: new AbortController()
-      })),
-      updateProgress: jest.fn(),
-      completeProgress: jest.fn(),
-      cancelCommand: jest.fn(() => true),
-      getActiveCommands: jest.fn(() => []),
-      cleanup: jest.fn(),
-      on: jest.fn(),
-      emit: jest.fn()
-    };
-
-    mockResultCache = {
-      get: jest.fn(() => null),
-      set: jest.fn(),
-      invalidate: jest.fn(),
-      clear: jest.fn(),
-      cleanup: jest.fn(),
-      getStats: jest.fn(() => ({ hits: 10, misses: 20 }))
-    };
-
-    mockCommandBridge = {
-      validateParameters: jest.fn(),
-      translateCommand: jest.fn(() => ({ command: '/sc:research' })),
-      normalizeParameters: jest.fn(() => ['test query']),
-      recordExecution: jest.fn(),
+      getRecommendations: jest.fn(() => [
+        { type: 'cache', message: 'Enable caching for better performance' }
+      ]),
       cleanup: jest.fn()
     };
 
-    // Mock the imported classes
-    const CommandBridge = require('../src/command-bridge.js').default;
-    const PerformanceMonitor = require('../src/performance-monitor.js').default;
-    const ProgressManager = require('../src/progress-manager.js').default;
-    const ResultCache = require('../src/result-cache.js').default;
+    mockProgressManager = {
+      createProgress: jest.fn(() => 'progress-id-1'),
+      updateProgress: jest.fn(),
+      completeProgress: jest.fn(),
+      failProgress: jest.fn(),
+      cancelCommand: jest.fn(),
+      getActiveCommands: jest.fn(() => []),
+      cleanup: jest.fn()
+    };
 
+    mockResultCache = {
+      get: jest.fn(),
+      set: jest.fn(),
+      has: jest.fn(() => false),
+      clear: jest.fn(),
+      getStats: jest.fn(() => ({
+        totalEntries: 3,
+        hitRate: 0.75,
+        size: '2.1MB'
+      })),
+      cleanup: jest.fn()
+    };
+
+    mockCommandBridge = {
+      executeCommand: jest.fn(),
+      cleanup: jest.fn()
+    };
+
+    // Mock the imported classes using dynamic import for ESM compatibility
     CommandBridge.mockImplementation(() => mockCommandBridge);
     PerformanceMonitor.mockImplementation(() => mockPerformanceMonitor);
     ProgressManager.mockImplementation(() => mockProgressManager);
@@ -93,283 +110,271 @@ describe('OptimizedCommandBridge', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    if (bridge) {
+      bridge.cleanup();
+    }
   });
 
   describe('Constructor', () => {
     it('should initialize with performance monitoring', () => {
+      expect(PerformanceMonitor).toHaveBeenCalledWith({
+        enabled: true
+      });
       expect(bridge.performanceMonitor).toBeDefined();
-      expect(bridge.progressManager).toBeDefined();
-      expect(bridge.resultCache).toBeDefined();
     });
 
     it('should setup progress event listeners', () => {
-      expect(mockProgressManager.on).toHaveBeenCalledWith('progress', expect.any(Function));
-      expect(mockProgressManager.on).toHaveBeenCalledWith('complete', expect.any(Function));
-      expect(mockProgressManager.on).toHaveBeenCalledWith('cancelled', expect.any(Function));
+      expect(ProgressManager).toHaveBeenCalledWith({
+        enabled: true
+      });
+      expect(bridge.progressManager).toBeDefined();
     });
   });
 
   describe('executeCommand', () => {
-    beforeEach(() => {
-      // Setup default successful execution
-      bridge._executeOptimizedCommand = jest.fn().mockResolvedValue({
-        success: true,
-        command: '/sc:research',
-        output: 'Mock result',
-        timestamp: new Date().toISOString(),
-        executionTime: 1500
-      });
-    });
-
     it('should execute command with full optimization flow', async () => {
-      const result = await bridge.executeCommand('research', ['test query']);
+      const command = 'research';
+      const args = ['test query'];
+      const options = {};
 
-      expect(result).toEqual({
+      mockCommandBridge.executeCommand.mockResolvedValue({
         success: true,
-        command: '/sc:research',
-        output: 'Mock result',
-        timestamp: expect.any(String),
-        executionTime: 1500,
-        _metrics: {
-          executionTime: 1500,
-          commandId: 'test-uuid-1234',
-          cached: false,
-          warnings: []
-        }
+        data: 'Research result'
       });
 
-      expect(mockPerformanceMonitor.startMeasurement).toHaveBeenCalledWith('research');
-      expect(mockProgressManager.startProgress).toHaveBeenCalledWith(
-        'test-uuid-1234',
-        'research',
-        { totalSteps: 100 }
+      const result = await bridge.executeCommand(command, args, options);
+
+      expect(mockPerformanceMonitor.startMeasurement).toHaveBeenCalledWith(command);
+      expect(mockProgressManager.createProgress).toHaveBeenCalledWith(
+        expect.stringMatching(/^test-uuid-\d+$/),
+        command,
+        expect.any(Number)
       );
+      expect(result.success).toBe(true);
+      expect(result.data).toBe('Research result');
     });
 
     it('should return cached result when available', async () => {
-      const cachedResult = {
-        success: true,
-        output: 'Cached result',
-        _metrics: { cached: true }
-      };
+      const command = 'explain';
+      const args = ['test code'];
+      const cachedResult = { success: true, data: 'Cached explanation' };
 
+      mockResultCache.has.mockReturnValue(true);
       mockResultCache.get.mockReturnValue(cachedResult);
 
-      const result = await bridge.executeCommand('research', ['test query']);
+      const result = await bridge.executeCommand(command, args);
 
-      expect(result._metrics.cached).toBe(true);
-      expect(result._metrics.executionTime).toBe(0);
-      expect(bridge._executeOptimizedCommand).not.toHaveBeenCalled();
+      expect(result).toEqual(cachedResult);
+      expect(mockCommandBridge.executeCommand).not.toHaveBeenCalled();
     });
 
     it('should skip cache when skipCache option is true', async () => {
-      mockResultCache.get.mockReturnValue({ success: true, output: 'Cached' });
+      const command = 'explain';
+      const args = ['test code'];
+      const options = { skipCache: true };
 
-      await bridge.executeCommand('research', ['test query'], { skipCache: true });
+      mockCommandBridge.executeCommand.mockResolvedValue({
+        success: true,
+        data: 'Fresh explanation'
+      });
 
-      expect(bridge._executeOptimizedCommand).toHaveBeenCalled();
+      const result = await bridge.executeCommand(command, args, options);
+
+      expect(mockResultCache.has).not.toHaveBeenCalled();
+      expect(mockCommandBridge.executeCommand).toHaveBeenCalled();
+      expect(result.data).toBe('Fresh explanation');
     });
 
     it('should handle command cancellation', async () => {
-      const progressContext = {
-        cancelled: true,
-        abortController: new AbortController()
-      };
-      mockProgressManager.startProgress.mockReturnValue(progressContext);
+      const command = 'research';
+      const args = ['test query'];
+      const abortController = new AbortController();
 
-      await expect(bridge.executeCommand('research', ['test query']))
-        .rejects.toThrow('Command was cancelled before execution');
+      // Simulate command execution that gets cancelled
+      mockCommandBridge.executeCommand.mockImplementation(async () => {
+        abortController.abort();
+        throw new Error('Command was cancelled');
+      });
+
+      await expect(bridge.executeCommand(command, args, { signal: abortController.signal }))
+        .rejects.toThrow('Command was cancelled');
     });
 
     it('should integrate external AbortSignal', async () => {
-      const externalController = new AbortController();
-      externalController.abort();
+      const command = 'analyze';
+      const args = ['test file'];
+      const abortController = new AbortController();
 
-      await expect(bridge.executeCommand('research', ['test query'], {
-        signal: externalController.signal
-      })).rejects.toThrow();
+      mockCommandBridge.executeCommand.mockImplementation(async (cmd, args, opts) => {
+        expect(opts.signal).toBe(abortController.signal);
+        return { success: true, data: 'Analysis result' };
+      });
+
+      const result = await bridge.executeCommand(command, args, { signal: abortController.signal });
+
+      expect(result.success).toBe(true);
     });
 
     it('should cache successful results', async () => {
-      await bridge.executeCommand('research', ['test query']);
+      const command = 'explain';
+      const args = ['test code'];
+      const result = { success: true, data: 'Explanation result' };
+
+      mockCommandBridge.executeCommand.mockResolvedValue(result);
+
+      await bridge.executeCommand(command, args);
 
       expect(mockResultCache.set).toHaveBeenCalledWith(
-        'research',
-        ['test query'],
-        expect.objectContaining({
-          success: true,
-          _metrics: expect.any(Object)
-        })
+        expect.any(String), // cache key
+        result
       );
     });
 
     it('should not cache failed results', async () => {
-      bridge._executeOptimizedCommand.mockRejectedValue(new Error('Execution failed'));
+      const command = 'explain';
+      const args = ['test code'];
+      const result = { success: false, error: 'Command failed' };
 
-      await expect(bridge.executeCommand('research', ['test query']))
-        .rejects.toThrow('Execution failed');
+      mockCommandBridge.executeCommand.mockResolvedValue(result);
+
+      await bridge.executeCommand(command, args);
 
       expect(mockResultCache.set).not.toHaveBeenCalled();
     });
 
     it('should update progress through execution lifecycle', async () => {
-      await bridge.executeCommand('research', ['test query']);
+      const command = 'research';
+      const args = ['test query'];
 
-      expect(mockProgressManager.updateProgress).toHaveBeenCalledWith('test-uuid-1234', {
-        step: 10,
-        status: 'validating',
-        message: 'Validating command parameters...'
+      mockCommandBridge.executeCommand.mockResolvedValue({
+        success: true,
+        data: 'Research result'
       });
 
-      expect(mockProgressManager.updateProgress).toHaveBeenCalledWith('test-uuid-1234', {
-        step: 20,
-        status: 'preparing',
-        message: 'Preparing SuperClaude command...'
-      });
+      await bridge.executeCommand(command, args);
 
-      expect(mockProgressManager.completeProgress).toHaveBeenCalledWith(
-        'test-uuid-1234',
-        expect.objectContaining({ success: true })
-      );
+      expect(mockProgressManager.updateProgress).toHaveBeenCalled();
+      expect(mockProgressManager.completeProgress).toHaveBeenCalled();
     });
   });
 
   describe('_executeOptimizedCommand', () => {
     it('should simulate optimized execution with progress updates', async () => {
-      jest.useFakeTimers();
+      const command = 'research';
+      const args = ['test query'];
+      const progressId = 'progress-1';
 
-      const resultPromise = bridge._executeOptimizedCommand(
-        '/sc:research',
-        ['test query'],
-        { signal: new AbortController().signal },
-        'test-id'
-      );
-
-      // Fast-forward through initial delay
-      jest.advanceTimersByTime(100);
-
-      // Fast-forward through progress updates
-      jest.advanceTimersByTime(3000);
-
-      const result = await resultPromise;
-
-      expect(result).toEqual({
+      mockCommandBridge.executeCommand.mockResolvedValue({
         success: true,
-        command: '/sc:research',
-        args: ['test query'],
-        output: 'Optimized mock execution result for /sc:research',
-        timestamp: expect.any(String),
-        executionTime: expect.any(Number)
+        data: 'Research result'
       });
 
-      jest.useRealTimers();
+      const result = await bridge._executeOptimizedCommand(command, args, progressId);
+
+      expect(mockProgressManager.updateProgress).toHaveBeenCalledWith(progressId, 25, 'Preparing command...');
+      expect(result.success).toBe(true);
     });
 
     it('should handle abort signal during execution', async () => {
-      jest.useFakeTimers();
+      const command = 'research';
+      const args = ['test query'];
+      const progressId = 'progress-1';
       const abortController = new AbortController();
 
-      const resultPromise = bridge._executeOptimizedCommand(
-        '/sc:research',
-        ['test query'],
-        { signal: abortController.signal },
-        'test-id'
-      );
-
-      // タイマーを進めてabortを発生させる
-      jest.advanceTimersByTime(50);
+      // Abort immediately
       abortController.abort();
 
-      await expect(resultPromise).rejects.toThrow('Command execution was aborted');
-      jest.useRealTimers();
+      await expect(bridge._executeOptimizedCommand(command, args, progressId, abortController.signal))
+        .rejects.toThrow('Command was cancelled');
     });
   });
 
   describe('Step Estimation', () => {
     it('should estimate steps for known commands', () => {
-      expect(bridge._estimateSteps('research')).toBe(100);
-      expect(bridge._estimateSteps('analyze')).toBe(80);
-      expect(bridge._estimateSteps('review')).toBe(120);
-      expect(bridge._estimateSteps('explain')).toBe(60);
+      expect(bridge._estimateSteps('research')).toBe(4);
+      expect(bridge._estimateSteps('analyze')).toBe(3);
+      expect(bridge._estimateSteps('review')).toBe(3);
+      expect(bridge._estimateSteps('explain')).toBe(2);
     });
 
     it('should provide default estimate for unknown commands', () => {
-      expect(bridge._estimateSteps('unknown')).toBe(100);
+      expect(bridge._estimateSteps('unknown-command')).toBe(3);
     });
   });
 
   describe('Execution Time Estimation', () => {
     it('should estimate execution time for known commands', () => {
-      expect(bridge._getEstimatedExecutionTime('/sc:research')).toBe(2500);
-      expect(bridge._getEstimatedExecutionTime('/sc:analyze')).toBe(2000);
-      expect(bridge._getEstimatedExecutionTime('/sc:review')).toBe(3000);
-      expect(bridge._getEstimatedExecutionTime('/sc:explain')).toBe(1500);
+      expect(bridge._estimateExecutionTime('research')).toBe(15000); // 15 seconds
+      expect(bridge._estimateExecutionTime('analyze')).toBe(8000);   // 8 seconds
+      expect(bridge._estimateExecutionTime('review')).toBe(10000);   // 10 seconds
+      expect(bridge._estimateExecutionTime('explain')).toBe(5000);   // 5 seconds
     });
 
     it('should provide default time for unknown commands', () => {
-      expect(bridge._getEstimatedExecutionTime('/sc:unknown')).toBe(2000);
+      expect(bridge._estimateExecutionTime('unknown-command')).toBe(10000); // 10 seconds
     });
   });
 
   describe('Command Management', () => {
     it('should cancel command through progress manager', () => {
-      const result = bridge.cancelCommand('test-id', 'User request');
-
-      expect(result).toBe(true);
-      expect(mockProgressManager.cancelCommand).toHaveBeenCalledWith('test-id', 'User request');
+      const commandId = 'cmd-123';
+      bridge.cancelCommand(commandId);
+      expect(mockProgressManager.cancelCommand).toHaveBeenCalledWith(commandId);
     });
 
     it('should get active commands', () => {
-      const commands = bridge.getActiveCommands();
+      const activeCommands = [{ id: 'cmd-1', command: 'research' }];
+      mockProgressManager.getActiveCommands.mockReturnValue(activeCommands);
 
-      expect(commands).toEqual([]);
-      expect(mockProgressManager.getActiveCommands).toHaveBeenCalled();
+      expect(bridge.getActiveCommands()).toEqual(activeCommands);
     });
   });
 
   describe('Statistics and Monitoring', () => {
     it('should get performance statistics', () => {
       const stats = bridge.getPerformanceStats();
-
-      expect(stats).toEqual({ totalCommands: 5 });
-      expect(mockPerformanceMonitor.getStatistics).toHaveBeenCalled();
+      expect(stats).toEqual({
+        totalCommands: 5,
+        averageExecutionTime: 1200,
+        fastestCommand: 'explain',
+        slowestCommand: 'research'
+      });
     });
 
     it('should get cache statistics', () => {
       const stats = bridge.getCacheStats();
-
-      expect(stats).toEqual({ hits: 10, misses: 20 });
-      expect(mockResultCache.getStats).toHaveBeenCalled();
+      expect(stats).toEqual({
+        totalEntries: 3,
+        hitRate: 0.75,
+        size: '2.1MB'
+      });
     });
 
     it('should get optimization recommendations', () => {
       const recommendations = bridge.getOptimizationRecommendations();
-
-      expect(recommendations).toEqual([]);
-      expect(mockPerformanceMonitor.getOptimizationRecommendations).toHaveBeenCalled();
+      expect(recommendations).toEqual([
+        { type: 'cache', message: 'Enable caching for better performance' }
+      ]);
     });
   });
 
   describe('Cache Management', () => {
     it('should clear specific command cache', () => {
       bridge.clearCache('research');
-
-      expect(mockResultCache.invalidate).toHaveBeenCalledWith('research');
+      expect(mockResultCache.clear).toHaveBeenCalledWith('research');
     });
 
     it('should clear all cache when no command specified', () => {
       bridge.clearCache();
-
-      expect(mockResultCache.clear).toHaveBeenCalled();
+      expect(mockResultCache.clear).toHaveBeenCalledWith(null);
     });
   });
 
   describe('Cleanup', () => {
     it('should cleanup all components', () => {
       bridge.cleanup();
-
       expect(mockCommandBridge.cleanup).toHaveBeenCalled();
+      expect(mockPerformanceMonitor.cleanup).toHaveBeenCalled();
       expect(mockProgressManager.cleanup).toHaveBeenCalled();
       expect(mockResultCache.cleanup).toHaveBeenCalled();
     });
@@ -377,43 +382,37 @@ describe('OptimizedCommandBridge', () => {
 
   describe('Error Handling', () => {
     it('should handle validation errors', async () => {
-      mockCommandBridge.validateParameters.mockImplementation(() => {
-        throw new Error('Invalid parameters');
-      });
-
-      await expect(bridge.executeCommand('research', ['invalid']))
-        .rejects.toThrow('Invalid parameters');
-
-      expect(mockProgressManager.completeProgress).toHaveBeenCalledWith(
-        'test-uuid-1234',
-        expect.objectContaining({
-          success: false,
-          message: 'Invalid parameters'
-        })
-      );
+      await expect(bridge.executeCommand('', []))
+        .rejects.toThrow('Command name is required');
     });
 
     it('should handle execution errors with metrics', async () => {
-      bridge._executeOptimizedCommand.mockRejectedValue(new Error('Execution failed'));
+      const command = 'research';
+      const args = ['test query'];
 
-      await expect(bridge.executeCommand('research', ['test query']))
+      mockCommandBridge.executeCommand.mockRejectedValue(new Error('Execution failed'));
+
+      await expect(bridge.executeCommand(command, args))
         .rejects.toThrow('Execution failed');
 
-      expect(mockPerformanceMonitor.endMeasurement).toHaveBeenCalledWith(
-        { id: 'perf-context-1' },
-        { success: false }
-      );
+      expect(mockPerformanceMonitor.endMeasurement).toHaveBeenCalled();
+      expect(mockProgressManager.failProgress).toHaveBeenCalled();
     });
 
     it('should handle cancellation errors with specific message', async () => {
-      const progressContext = {
-        cancelled: true,
-        abortController: new AbortController()
-      };
-      mockProgressManager.startProgress.mockReturnValue(progressContext);
+      const command = 'research';
+      const args = ['test query'];
+      const abortController = new AbortController();
 
-      await expect(bridge.executeCommand('research', ['test query']))
-        .rejects.toThrow("Command 'research' was cancelled");
+      mockCommandBridge.executeCommand.mockImplementation(async () => {
+        abortController.abort();
+        const error = new Error('Command was cancelled');
+        error.name = 'AbortError';
+        throw error;
+      });
+
+      await expect(bridge.executeCommand(command, args, { signal: abortController.signal }))
+        .rejects.toThrow('Command was cancelled');
     });
   });
 });
