@@ -403,35 +403,44 @@ export class FileUtilities extends EventEmitter {
     // 正規化前のパストラバーサルチェック（重要！）
     // 正規化によって隠される可能性のある危険なパターンを事前に検出
     // ただし、ファイル名の一部として .. を含む場合は許可する
-    const rawSegments = filePath.split(/[/\\]/).filter(segment => {
-      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
-      return cleaned !== '' && cleaned !== '.';
-    });
+    const rawSegments = filePath.split(/[/\\]/);
 
     // セグメントが完全に ".." と一致する場合のみ拒否（Windows バイパス対策）
     // ファイル名に .. が含まれている場合（例: "file..txt"）は許可
-    if (rawSegments.some(segment => {
+    // CRITICAL: フィルタリング前に検証を実行
+    for (const segment of rawSegments) {
       const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
-      return cleaned === '..';
-    })) {
-      throw new Error('Security violation: path traversal detected');
+      if (cleaned === '..') {
+        throw new Error('Security violation: path traversal detected');
+      }
     }
+
+    // 安全なセグメントのみをフィルタリング（検証後）
+    const filteredRawSegments = rawSegments.filter(segment => {
+      const cleaned = segment.replace(/[. ]+$/, '');
+      return cleaned !== '' && cleaned !== '.';
+    });
 
     // 正規化
     const normalized = this.normalizePath(filePath);
 
     // 正規化後の追加チェック
     // クロスプラットフォーム対応: 正規化によって統一された '/' セパレータを使用
-    const normalizedSegments = normalized.split('/').filter(segment => {
+    const normalizedSegments = normalized.split('/');
+
+    // CRITICAL: フィルタリング前に検証を実行
+    for (const segment of normalizedSegments) {
       const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
+      if (cleaned === '..') {
+        throw new Error('Security violation: path traversal detected');
+      }
+    }
+
+    // 安全なセグメントのみをフィルタリング（検証後）
+    const filteredNormalizedSegments = normalizedSegments.filter(segment => {
+      const cleaned = segment.replace(/[. ]+$/, '');
       return cleaned !== '';
     });
-    if (normalizedSegments.some(segment => {
-      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
-      return cleaned === '..';
-    })) {
-      throw new Error('Security violation: path traversal detected');
-    }
 
     // クロスプラットフォーム対応のパストラバーサル検出
     // baseDir に対する解決済みパスを計算
@@ -442,11 +451,17 @@ export class FileUtilities extends EventEmitter {
 
     // パストラバーサル検出: 最初のセグメントが .. の場合
     // クロスプラットフォーム対応: Windows と Unix の両方のパスセパレータを処理
-    const relSegments = rel.split(/[\\/]+/).filter(segment => {
-      const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
-      return cleaned !== '';
-    });
-    if ((relSegments.length > 0 && relSegments[0].replace(/[. ]+$/, '') === '..') || path.isAbsolute(rel)) {
+    const relSegments = rel.split(/[\\/]+/);
+
+    // CRITICAL: フィルタリング前に最初のセグメントを検証
+    if (relSegments.length > 0) {
+      const firstSegmentCleaned = relSegments[0].replace(/[. ]+$/, '');
+      if (firstSegmentCleaned === '..') {
+        throw new Error('Security violation: path traversal detected');
+      }
+    }
+
+    if (path.isAbsolute(rel)) {
       throw new Error('Security violation: path traversal detected');
     }
 
@@ -461,10 +476,9 @@ export class FileUtilities extends EventEmitter {
       // ファイルターゲットのrealpathが取得できた場合、それを検証
       // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
       const relativeFromBase = path.relative(this.baseDirRealPath, targetRealPath);
-      const relativeFromBaseSegments = relativeFromBase.split(/[\\/]+/).filter(segment => {
-        const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
-        return cleaned !== '';
-      });
+      const relativeFromBaseSegments = relativeFromBase.split(/[\\/]+/);
+
+      // CRITICAL: フィルタリング前に最初のセグメントを検証
       if (
         targetRealPath !== this.baseDirRealPath &&
         (
@@ -490,10 +504,9 @@ export class FileUtilities extends EventEmitter {
 
         // prefix collision 脆弱性を防ぐため、path.relative を使用した安全な包含チェック
         const relativeParentFromBase = path.relative(this.baseDirRealPath, parentRealPath);
-        const relativeParentSegments = relativeParentFromBase.split(/[\\/]+/).filter(segment => {
-          const cleaned = segment.replace(/[. ]+$/, ''); // Windows対応: trailing dots/spaces除去
-          return cleaned !== '';
-        });
+        const relativeParentSegments = relativeParentFromBase.split(/[\\/]+/);
+
+        // CRITICAL: フィルタリング前に最初のセグメントを検証
         if (
           parentRealPath !== this.baseDirRealPath &&
           (
