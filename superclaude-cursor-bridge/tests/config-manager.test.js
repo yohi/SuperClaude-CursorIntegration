@@ -378,14 +378,15 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
 
       fs.writeFile = jest.fn().mockRejectedValue(new Error('Write error'));
 
-      // エラーが発生しても例外は投げられない
-      await expect(configManager.setSetting('test.key', 'value')).resolves.not.toThrow();
-
-      expect(consoleWarnSpy).toHaveBeenCalledWith('Failed to persist settings:', 'Write error');
-
-      // クリーンアップ
-      fs.writeFile = originalWriteFile;
-      consoleWarnSpy.mockRestore();
+      try {
+        // エラーが発生しても例外は投げられない
+        await expect(configManager.setSetting('test.key', 'value')).resolves.toBeUndefined();
+        expect(consoleWarnSpy).toHaveBeenCalledWith('Failed to persist settings:', 'Write error');
+      } finally {
+        // クリーンアップ
+        fs.writeFile = originalWriteFile;
+        consoleWarnSpy.mockRestore();
+      }
     });
 
     test('cleanup時のwatcherエラーハンドリング', async () => {

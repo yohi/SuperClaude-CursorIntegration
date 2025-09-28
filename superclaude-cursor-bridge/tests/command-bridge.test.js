@@ -204,6 +204,7 @@ describe('Task 2.2: Command Bridge - 受入基準テスト', () => {
         // エラーの場合も処理
       } finally {
         // クリーンアップは必ず実行される
+        expect(removeEventListenerSpy).toHaveBeenCalled();
         removeEventListenerSpy.mockRestore();
       }
     });

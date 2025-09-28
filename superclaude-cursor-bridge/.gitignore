@@ -105,14 +105,14 @@ tests/fixtures/test..config..*
 tests/fixtures/*_subdir/
 
 # Test temporary files patterns (root level)
-[0-9]*_*
-*..hidden
-config.txt
-myfile..txt
-test..config..json
-backup..*
-*_subdir/
-subdir/
+/[0-9]*_*
+/*..hidden
+/config.txt
+/myfile..txt
+/test..config..json
+/backup..*
+/*_subdir/
+/subdir/
 
 # Test temporary directories and files
 *..backup/
@@ -142,12 +142,12 @@ jest-*.json
 # Editor backup files
 *.bak
 *.backup
-*~
 
 # Security files (should never be committed)
 secret.txt
 **/secret.*
 *.secret
-credentials.*
+/credentials.*
+/**/.credentials
 *.key
 *.pem
