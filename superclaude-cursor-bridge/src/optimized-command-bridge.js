@@ -137,19 +137,21 @@ export default class OptimizedCommandBridge extends CommandBridge {
       // パフォーマンス測定終了
       const metrics = this.performanceMonitor.endMeasurement(perfContext, result);
 
-      // 進行状況完了
-      this.progressManager.completeProgress(commandId, result);
-
       // メトリクス情報を結果に追加
-      return {
+      const finalResult = {
         ...result,
         _metrics: {
           executionTime: metrics.executionTime,
           commandId,
           cached: false,
-          warnings: metrics.warning
+          warnings: metrics.warning || []
         }
       };
+
+      // 進行状況完了（メトリクス情報付きで通知）
+      this.progressManager.completeProgress(commandId, finalResult);
+
+      return finalResult;
 
     } catch (error) {
       // エラー時の処理
