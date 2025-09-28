@@ -194,6 +194,8 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
       // 少し待ってから確認（ファイル監視は非同期）
       await new Promise(resolve => setTimeout(resolve, 100));
 
+      expect(mockReloadListener).toHaveBeenCalled();
+
       configWithWatcher.cleanup();
     });
 
@@ -203,20 +205,22 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
         autoReload: true
       });
 
-      const mockReloadListener = jest.fn();
-      configWithWatcher.on('fileReloaded', mockReloadListener);
+      try {
+        const mockReloadListener = jest.fn();
+        configWithWatcher.on('fileReloaded', mockReloadListener);
 
-      // settings.jsonを変更
-      const settingsPath = path.join(tempDir, 'settings.json');
-      const newSettings = { ui: { theme: 'light' } };
-      await fs.writeFile(settingsPath, JSON.stringify(newSettings, null, 2));
+        // settings.jsonを変更
+        const settingsPath = path.join(tempDir, 'settings.json');
+        const newSettings = { ui: { theme: 'light' } };
+        await fs.writeFile(settingsPath, JSON.stringify(newSettings, null, 2));
 
-      // 少し待ってから確認
-      await new Promise(resolve => setTimeout(resolve, 100));
+        // 少し待ってから確認
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      expect(mockReloadListener).toHaveBeenCalled();
-
-      configWithWatcher.cleanup();
+        expect(mockReloadListener).toHaveBeenCalled();
+      } finally {
+        configWithWatcher.cleanup();
+      }
     });
 
     test('ファイル監視でbridge-config.json変更時の処理', async () => {
@@ -225,20 +229,22 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
         autoReload: true
       });
 
-      const mockReloadListener = jest.fn();
-      configWithWatcher.on('fileReloaded', mockReloadListener);
+      try {
+        const mockReloadListener = jest.fn();
+        configWithWatcher.on('fileReloaded', mockReloadListener);
 
-      // bridge-config.jsonを変更
-      const bridgeConfigPath = path.join(tempDir, 'bridge-config.json');
-      const newBridgeConfig = { logging: { level: 'debug' } };
-      await fs.writeFile(bridgeConfigPath, JSON.stringify(newBridgeConfig, null, 2));
+        // bridge-config.jsonを変更
+        const bridgeConfigPath = path.join(tempDir, 'bridge-config.json');
+        const newBridgeConfig = { logging: { level: 'debug' } };
+        await fs.writeFile(bridgeConfigPath, JSON.stringify(newBridgeConfig, null, 2));
 
-      // 少し待ってから確認
-      await new Promise(resolve => setTimeout(resolve, 100));
+        // 少し待ってから確認
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      expect(mockReloadListener).toHaveBeenCalled();
-
-      configWithWatcher.cleanup();
+        expect(mockReloadListener).toHaveBeenCalled();
+      } finally {
+        configWithWatcher.cleanup();
+      }
     });
 
     test('ファイル監視でエラーが発生した場合の処理', async () => {
@@ -249,23 +255,25 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
 
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-      // 無効なファイルを作成してエラーをシミュレート
-      const configPath = path.join(tempDir, '.claude.json');
-      await fs.writeFile(configPath, '{ invalid json }');
+      try {
+        // 無効なファイルを作成してエラーをシミュレート
+        const configPath = path.join(tempDir, '.claude.json');
+        await fs.writeFile(configPath, '{ invalid json }');
 
-      // chokidar のchangeイベントを手動でトリガー
-      configWithWatcher.watchers[0].emit('change');
+        // chokidar のchangeイベントを手動でトリガー
+        configWithWatcher.watchers[0].emit('change');
 
-      // 少し待ってエラー処理を確認
-      await new Promise(resolve => setTimeout(resolve, 50));
+        // 少し待ってエラー処理を確認
+        await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        'Error reloading configuration file:',
-        expect.stringContaining('Invalid JSON')
-      );
-
-      consoleWarnSpy.mockRestore();
-      configWithWatcher.cleanup();
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          'Error reloading configuration file:',
+          expect.stringContaining('Invalid JSON')
+        );
+      } finally {
+        consoleWarnSpy.mockRestore();
+        configWithWatcher.cleanup();
+      }
     });
 
     test('loadSuperClaudeConfigでSyntaxError以外のエラー', async () => {
@@ -273,10 +281,11 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
       const originalReadFile = fs.readFile;
       fs.readFile = jest.fn().mockRejectedValue(new Error('Permission denied'));
 
-      await expect(configManager.loadSuperClaudeConfig()).rejects.toThrow('Permission denied');
-
-      // クリーンアップ
-      fs.readFile = originalReadFile;
+      try {
+        await expect(configManager.loadSuperClaudeConfig()).rejects.toThrow('Permission denied');
+      } finally {
+        fs.readFile = originalReadFile;
+      }
     });
 
     test('loadSettingsでSyntaxError以外のエラー', async () => {
@@ -284,10 +293,11 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
       const originalReadFile = fs.readFile;
       fs.readFile = jest.fn().mockRejectedValue(new Error('Permission denied'));
 
-      await expect(configManager.loadSettings()).rejects.toThrow('Permission denied');
-
-      // クリーンアップ
-      fs.readFile = originalReadFile;
+      try {
+        await expect(configManager.loadSettings()).rejects.toThrow('Permission denied');
+      } finally {
+        fs.readFile = originalReadFile;
+      }
     });
 
     test('loadBridgeConfigでSyntaxError以外のエラー', async () => {
@@ -295,10 +305,11 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
       const originalReadFile = fs.readFile;
       fs.readFile = jest.fn().mockRejectedValue(new Error('Permission denied'));
 
-      await expect(configManager.loadBridgeConfig()).rejects.toThrow('Permission denied');
-
-      // クリーンアップ
-      fs.readFile = originalReadFile;
+      try {
+        await expect(configManager.loadBridgeConfig()).rejects.toThrow('Permission denied');
+      } finally {
+        fs.readFile = originalReadFile;
+      }
     });
   });
 

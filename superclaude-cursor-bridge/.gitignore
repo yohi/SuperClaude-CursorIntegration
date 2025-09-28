@@ -104,15 +104,12 @@ tests/fixtures/myfile..*
 tests/fixtures/test..config..*
 tests/fixtures/*_subdir/
 
-# Test temporary files patterns (root level)
-/[0-9]*_*
-/*..hidden
-/config.txt
-/myfile..txt
-/test..config..json
-/backup..*
-/*_subdir/
-/subdir/
+# Test temporary files patterns (scoped to tests directory)
+tests/temp/
+tests/**/temp_*
+tests/**/*..hidden
+tests/**/test_config.txt
+tests/**/*..backup*
 
 # Test temporary directories and files
 *..backup/
