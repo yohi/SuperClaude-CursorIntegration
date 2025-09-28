@@ -103,11 +103,16 @@ export default class OptimizedCommandBridge extends CommandBridge {
 
       // AbortSignalの統合 - 外部signalと内部signalを結合
       if (options.signal) {
-        // 外部signalが発火したら内部AbortControllerもabortする
-        externalAbortListener = () => {
+        // 既にabortされている場合は即座に内部コントローラーもabort
+        if (options.signal.aborted) {
           progressContext.abortController.abort();
-        };
-        options.signal.addEventListener('abort', externalAbortListener, { once: true });
+        } else {
+          // まだabortされていない場合のみリスナーを登録
+          externalAbortListener = () => {
+            progressContext.abortController.abort();
+          };
+          options.signal.addEventListener('abort', externalAbortListener, { once: true });
+        }
       }
 
       combinedOptions = {
