@@ -196,6 +196,106 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
 
       configWithWatcher.cleanup();
     });
+
+    test('ファイル監視でsettings.json変更時の処理', async () => {
+      const configWithWatcher = new ConfigManager({
+        configDir: tempDir,
+        autoReload: true
+      });
+
+      const mockReloadListener = jest.fn();
+      configWithWatcher.on('fileReloaded', mockReloadListener);
+
+      // settings.jsonを変更
+      const settingsPath = path.join(tempDir, 'settings.json');
+      const newSettings = { ui: { theme: 'light' } };
+      await fs.writeFile(settingsPath, JSON.stringify(newSettings, null, 2));
+
+      // 少し待ってから確認
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      configWithWatcher.cleanup();
+    });
+
+    test('ファイル監視でbridge-config.json変更時の処理', async () => {
+      const configWithWatcher = new ConfigManager({
+        configDir: tempDir,
+        autoReload: true
+      });
+
+      const mockReloadListener = jest.fn();
+      configWithWatcher.on('fileReloaded', mockReloadListener);
+
+      // bridge-config.jsonを変更
+      const bridgeConfigPath = path.join(tempDir, 'bridge-config.json');
+      const newBridgeConfig = { logging: { level: 'debug' } };
+      await fs.writeFile(bridgeConfigPath, JSON.stringify(newBridgeConfig, null, 2));
+
+      // 少し待ってから確認
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      configWithWatcher.cleanup();
+    });
+
+    test('ファイル監視でエラーが発生した場合の処理', async () => {
+      const configWithWatcher = new ConfigManager({
+        configDir: tempDir,
+        autoReload: true
+      });
+
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // 無効なファイルを作成してエラーをシミュレート
+      const configPath = path.join(tempDir, '.claude.json');
+      await fs.writeFile(configPath, '{ invalid json }');
+
+      // chokidar のchangeイベントを手動でトリガー
+      configWithWatcher.watchers[0].emit('change');
+
+      // 少し待ってエラー処理を確認
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Error reloading configuration file:',
+        expect.stringContaining('Invalid JSON')
+      );
+
+      consoleWarnSpy.mockRestore();
+      configWithWatcher.cleanup();
+    });
+
+    test('loadSuperClaudeConfigでSyntaxError以外のエラー', async () => {
+      // fs.readFileをモックしてSyntaxError以外のエラーを発生させる
+      const originalReadFile = fs.readFile;
+      fs.readFile = jest.fn().mockRejectedValue(new Error('Permission denied'));
+
+      await expect(configManager.loadSuperClaudeConfig()).rejects.toThrow('Permission denied');
+
+      // クリーンアップ
+      fs.readFile = originalReadFile;
+    });
+
+    test('loadSettingsでSyntaxError以外のエラー', async () => {
+      // fs.readFileをモックしてSyntaxError以外のエラーを発生させる
+      const originalReadFile = fs.readFile;
+      fs.readFile = jest.fn().mockRejectedValue(new Error('Permission denied'));
+
+      await expect(configManager.loadSettings()).rejects.toThrow('Permission denied');
+
+      // クリーンアップ
+      fs.readFile = originalReadFile;
+    });
+
+    test('loadBridgeConfigでSyntaxError以外のエラー', async () => {
+      // fs.readFileをモックしてSyntaxError以外のエラーを発生させる
+      const originalReadFile = fs.readFile;
+      fs.readFile = jest.fn().mockRejectedValue(new Error('Permission denied'));
+
+      await expect(configManager.loadBridgeConfig()).rejects.toThrow('Permission denied');
+
+      // クリーンアップ
+      fs.readFile = originalReadFile;
+    });
   });
 
   describe('エラーハンドリングとフォールバック', () => {
@@ -220,6 +320,89 @@ describe('Task 2.3: Configuration Manager - 受入基準テスト', () => {
         await configManager.setSetting('test.key', 'value');
         // 権限エラーが発生した場合の処理をテスト
       }).not.toThrow(); // gracefulに処理されることを確認
+    });
+
+    test('settings.jsonで無効なJSON形式の場合のエラー処理', async () => {
+      const invalidJsonPath = path.join(tempDir, 'settings.json');
+      await fs.writeFile(invalidJsonPath, '{ invalid json }');
+
+      await expect(configManager.loadSettings()).rejects.toThrow('Invalid JSON format in settings.json');
+    });
+
+    test('bridge-config.jsonで無効なJSON形式の場合のエラー処理', async () => {
+      const invalidJsonPath = path.join(tempDir, 'bridge-config.json');
+      await fs.writeFile(invalidJsonPath, '{ invalid json }');
+
+      await expect(configManager.loadBridgeConfig()).rejects.toThrow('Invalid JSON format in bridge-config.json');
+    });
+
+    test('getSetting内部でエラーが発生した場合のフォールバック', async () => {
+      // デフォルト設定を破壊して内部エラーをシミュレート
+      configManager.defaultConfig = null;
+
+      const result = await configManager.getSetting('nonexistent.key', 'fallback');
+      expect(result).toBe('fallback');
+    });
+
+    test('saveBridgeConfigでnon-objectの値を処理', async () => {
+      const config = {
+        simpleValue: 'string',
+        nested: {
+          key: 'value'
+        }
+      };
+
+      await configManager.saveBridgeConfig(config);
+
+      const simpleValue = await configManager.getSetting('simpleValue');
+      const nestedValue = await configManager.getSetting('nested.key');
+
+      expect(simpleValue).toBe('string');
+      expect(nestedValue).toBe('value');
+    });
+
+    test('validateConfigで無効な設定オブジェクトのテスト', async () => {
+      await expect(configManager.validateConfig(null)).rejects.toThrow('Invalid configuration format');
+      await expect(configManager.validateConfig('string')).rejects.toThrow('Invalid configuration format');
+      await expect(configManager.validateConfig({})).rejects.toThrow('Missing required configuration: superclaude section');
+    });
+
+    test('永続化エラーの処理（_persistSettings）', async () => {
+      // fs.writeFileをモックしてエラーを発生させる
+      const originalWriteFile = fs.writeFile;
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      fs.writeFile = jest.fn().mockRejectedValue(new Error('Write error'));
+
+      // エラーが発生しても例外は投げられない
+      await expect(configManager.setSetting('test.key', 'value')).resolves.not.toThrow();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Failed to persist settings:', 'Write error');
+
+      // クリーンアップ
+      fs.writeFile = originalWriteFile;
+      consoleWarnSpy.mockRestore();
+    });
+
+    test('cleanup時のwatcherエラーハンドリング', async () => {
+      const configWithWatcher = new ConfigManager({
+        configDir: tempDir,
+        autoReload: true
+      });
+
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // watcherのcloseメソッドをモックしてエラーを発生させる
+      configWithWatcher.watchers[0].close = jest.fn().mockImplementation(() => {
+        throw new Error('Watcher close error');
+      });
+
+      // cleanupでエラーが発生しても例外は投げられない
+      expect(() => configWithWatcher.cleanup()).not.toThrow();
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith('Error closing file watcher:', 'Watcher close error');
+
+      consoleWarnSpy.mockRestore();
     });
 
     test('不正なキー名でエラーが発生する', async () => {
