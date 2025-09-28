@@ -203,12 +203,13 @@ export default class PerformanceMonitor {
     }
 
     // メモリ使用量の警告が多い場合
-    if (stats.recentWarnings.length > 3) {
+    const memoryWarnings = stats.recentWarnings.filter(w => w.type === 'memory');
+    if (memoryWarnings.length > 3) {
       recommendations.push({
         type: 'memory',
         priority: 'medium',
         recommendation: 'Implement memory usage optimization and garbage collection',
-        currentValue: `${stats.recentWarnings.length} recent memory warnings`,
+        currentValue: `${memoryWarnings.length} recent memory warnings`,
         targetValue: '<2 memory warnings per 10 executions'
       });
     }

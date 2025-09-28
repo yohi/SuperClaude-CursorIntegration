@@ -97,10 +97,25 @@ export default class OptimizedCommandBridge extends CommandBridge {
         message: 'Preparing SuperClaude command...'
       });
 
-      // AbortSignalの統合
+      // AbortSignalの統合 - 外部signalと内部signalを結合
+      let externalAbortListener;
+      if (options.signal) {
+        // 外部signalが発火したら内部AbortControllerもabortする
+        externalAbortListener = () => {
+          progressContext.abortController.abort();
+        };
+        options.signal.addEventListener('abort', externalAbortListener, { once: true });
+      }
+
       const combinedOptions = {
         ...options,
-        signal: progressContext.abortController.signal
+        signal: progressContext.abortController.signal,
+        _cleanup: () => {
+          // リスナーのクリーンアップ
+          if (externalAbortListener && options.signal) {
+            options.signal.removeEventListener('abort', externalAbortListener);
+          }
+        }
       };
 
       // 実際のSuperClaude CLI実行
@@ -151,6 +166,11 @@ export default class OptimizedCommandBridge extends CommandBridge {
       }
 
       throw error;
+    } finally {
+      // リスナーのクリーンアップを確実に実行
+      if (combinedOptions._cleanup) {
+        combinedOptions._cleanup();
+      }
     }
   }
 
