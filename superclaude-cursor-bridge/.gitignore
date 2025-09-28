@@ -104,6 +104,13 @@ tests/fixtures/myfile..*
 tests/fixtures/test..config..*
 tests/fixtures/*_subdir/
 
+# Test temporary files patterns (scoped to tests directory)
+tests/temp/
+tests/**/temp_*
+tests/**/*..hidden
+tests/**/test_config.txt
+tests/**/*..backup*
+
 # Test temporary directories and files
 *..backup/
 *..backup
@@ -132,4 +139,12 @@ jest-*.json
 # Editor backup files
 *.bak
 *.backup
-*~
+
+# Security files (should never be committed)
+secret.txt
+**/secret.*
+*.secret
+/credentials.*
+/**/.credentials
+*.key
+*.pem
