@@ -222,6 +222,8 @@ async function main() {
 }
 
 // スクリプトが直接実行された場合のみ実行
-if (import.meta.url === `file://${process.argv[1]}`) {
+const isDirectExecution = process.argv[1] && path.resolve(process.argv[1]) === __filename;
+
+if (isDirectExecution) {
   main();
 }

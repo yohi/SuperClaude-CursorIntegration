@@ -105,7 +105,9 @@ describe('Deployment Preparation Requirements', () => {
       // Check that sensitive patterns are ignored
       expect(content).toMatch(/\.env/);
       expect(content).toMatch(/secret/);
-      expect(content).toMatch(/key/);
+      expect(content).toMatch(/\*\.key/);
+      expect(content).toMatch(/id_rsa/);
+      expect(content).toMatch(/\.pem/);
     });
   });
 });

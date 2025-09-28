@@ -58,8 +58,12 @@ Bridge固有の設定ファイルです：
 
 - `superclaude.cliPath`: SuperClaude CLIの実行パス
 - `superclaude.timeout`: コマンド実行タイムアウト（ミリ秒）
+- `superclaude.maxRetries`: コマンド実行時の最大再試行回数
 - `cache.enabled`: キャッシュ機能の有効/無効
+- `cache.maxSize`: キャッシュの最大サイズ
+- `cache.ttl`: キャッシュの有効期限（ミリ秒）
 - `performance.monitoring`: パフォーマンス監視の有効/無効
+- `performance.logLevel`: ログレベル（debug, info, warn, error）
 
 ## 環境変数
 
