@@ -233,11 +233,19 @@ export default class ResultCache {
    */
   _cleanup() {
     const now = Date.now();
+    const expiredKeys = [];
+
     for (const [key, entry] of this.cache.entries()) {
       if (entry.expiresAt < now) {
-        this.cache.delete(key);
+        expiredKeys.push(key);
       }
     }
+
+    // 別のループで削除を実行
+    expiredKeys.forEach(key => this.cache.delete(key));
+
+    // 任意: 監視用に直近の削除数を保持
+    this._lastCleanupRemoved = expiredKeys.length;
   }
 
   /**
@@ -289,7 +297,8 @@ export default class ResultCache {
       memoryUsage: `${(totalSize / 1024 / 1024).toFixed(2)} MB`,
       commandBreakdown: commandStats,
       oldestEntry: entries.length > 0 ? Math.min(...entries.map(e => e.cachedAt)) : null,
-      newestEntry: entries.length > 0 ? Math.max(...entries.map(e => e.cachedAt)) : null
+      newestEntry: entries.length > 0 ? Math.max(...entries.map(e => e.cachedAt)) : null,
+      lastCleanupRemoved: this._lastCleanupRemoved || 0
     };
   }
 

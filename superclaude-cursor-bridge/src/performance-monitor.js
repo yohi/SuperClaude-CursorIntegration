@@ -10,7 +10,9 @@ export default class PerformanceMonitor {
     this.thresholds = {
       lightCommand: options.lightCommandThreshold || 3000, // 3秒
       heavyCommand: options.heavyCommandThreshold || 30000, // 30秒
-      memoryWarning: options.memoryWarning || 512 * 1024 * 1024 // 512MB
+      memoryWarning: options.memoryWarning || 512 * 1024 * 1024, // 512MB
+      memoryDeltaThreshold: options.memoryDeltaThreshold || 256 * 1024 * 1024, // 256MB増加
+      memoryHighDelta: options.memoryHighDelta || 300 * 1024 * 1024 // 300MB以上は高警告
     };
   }
 
@@ -84,13 +86,12 @@ export default class PerformanceMonitor {
     // メモリ増分での警告判定
     if (startMemoryUsage && endMemoryUsage) {
       const memoryDelta = endMemoryUsage.rss - startMemoryUsage.rss;
-      const memoryDeltaThreshold = 256 * 1024 * 1024; // 256MB増加をしきい値とする
 
-      if (memoryDelta > memoryDeltaThreshold) {
+      if (memoryDelta > this.thresholds.memoryDeltaThreshold) {
         warnings.push({
           type: 'memory',
           message: `Memory increased by ${Math.round(memoryDelta / 1024 / 1024)}MB during execution`,
-          severity: memoryDelta > memoryDeltaThreshold * 2 ? 'high' : 'medium'
+          severity: memoryDelta >= this.thresholds.memoryHighDelta ? 'high' : 'medium'
         });
       }
     } else {

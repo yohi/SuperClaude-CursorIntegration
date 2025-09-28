@@ -111,6 +111,9 @@ tests/**/*..hidden
 tests/**/test_config.txt
 tests/**/*..backup*
 
+# Generated test files (scoped directory; avoid root-wide ignores)
+/tests-root-artifacts/**
+
 # Test temporary directories and files
 *..backup/
 *..backup
