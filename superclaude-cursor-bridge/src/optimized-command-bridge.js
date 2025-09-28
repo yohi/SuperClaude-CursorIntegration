@@ -48,7 +48,12 @@ export default class OptimizedCommandBridge extends EventEmitter {
 
     // Check cache first
     if (!options.skipCache && this.resultCache.has(cacheKey)) {
-      return this.resultCache.get(cacheKey);
+      const cachedResult = this.resultCache.get(cacheKey);
+      return {
+        ...cachedResult,
+        cached: true,
+        commandId
+      };
     }
 
     // Start performance monitoring
@@ -77,7 +82,11 @@ export default class OptimizedCommandBridge extends EventEmitter {
       const measurementResult = { success: result?.success !== false };
       this.performanceMonitor.endMeasurement(perfContext, measurementResult);
 
-      return result;
+      return {
+        ...result,
+        cached: false,
+        commandId
+      };
 
     } catch (error) {
       // Handle errors

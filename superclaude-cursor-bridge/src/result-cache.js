@@ -64,13 +64,42 @@ export default class ResultCache {
   }
 
   /**
-   * Get cached result for command
-   * @param {string} commandName - Command name
-   * @param {Array} args - Command arguments
+   * Check if cache has entry for key
+   * @param {string} key - Cache key
+   * @returns {boolean} True if key exists and not expired
+   */
+  has(key) {
+    const entry = this.cache.get(key);
+
+    if (!entry) {
+      return false;
+    }
+
+    // TTLチェック
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Get cached result for command or key
+   * @param {string} commandNameOrKey - Command name or cache key
+   * @param {Array} args - Command arguments (optional for key-based access)
    * @returns {Object|null} Cached result or null
    */
-  get(commandName, args = []) {
-    const key = this._generateKey(commandName, args);
+  get(commandNameOrKey, args = []) {
+    let key;
+
+    // If args is empty and commandNameOrKey looks like a key, use it directly
+    if (args.length === 0 && commandNameOrKey.includes(':')) {
+      key = commandNameOrKey;
+    } else {
+      key = this._generateKey(commandNameOrKey, args);
+    }
+
     const entry = this.cache.get(key);
 
     if (!entry) {
@@ -100,19 +129,35 @@ export default class ResultCache {
 
   /**
    * Store result in cache
-   * @param {string} commandName - Command name
-   * @param {Array} args - Command arguments
-   * @param {Object} result - Result to cache
+   * @param {string} keyOrCommandName - Cache key or command name
+   * @param {Array|Object} argsOrResult - Command arguments or result object
+   * @param {Object} result - Result to cache (if using command name)
    * @param {number} customTTL - Custom TTL in milliseconds
    * @returns {boolean} True if cached successfully
    */
-  set(commandName, args = [], result, customTTL = null) {
+  set(keyOrCommandName, argsOrResult = [], result = null, customTTL = null) {
+    let key, commandName, args, actualResult;
+
+    // Determine if this is key-based or command-based access
+    if (result === null && typeof argsOrResult === 'object' && !Array.isArray(argsOrResult)) {
+      // Key-based access: set(key, result)
+      key = keyOrCommandName;
+      actualResult = argsOrResult;
+      commandName = key.split(':')[0]; // Extract command name from key
+      args = [];
+    } else {
+      // Command-based access: set(commandName, args, result)
+      commandName = keyOrCommandName;
+      args = argsOrResult;
+      actualResult = result;
+      key = this._generateKey(commandName, args);
+    }
+
     // キャッシュ対象外の結果をチェック
-    if (!this._shouldCache(commandName, result)) {
+    if (!this._shouldCache(commandName, actualResult)) {
       return false;
     }
 
-    const key = this._generateKey(commandName, args);
     const ttl = customTTL || this.commandTTLs[commandName] || this.defaultTTL;
     const now = Date.now();
 
@@ -120,12 +165,12 @@ export default class ResultCache {
       key,
       commandName,
       args: this._normalizeArgs(args),
-      result: this._cloneResult(result),
+      result: this._cloneResult(actualResult),
       cachedAt: now,
       expiresAt: now + ttl,
       lastAccessed: now,
       hitCount: 0,
-      size: this._estimateSize(result)
+      size: this._estimateSize(actualResult)
     };
 
     // メモリ制限チェック

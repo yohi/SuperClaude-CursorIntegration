@@ -1,0 +1,19 @@
+{
+  "project_name": "SuperClaude-for-Cursor",
+  "context": {
+    "framework": "Node.js",
+    "language": "JavaScript",
+    "architecture": "Hybrid Node.js + Python CLI",
+    "purpose": "SuperClaude integration for Cursor IDE"
+  },
+  "superclaude": {
+    "cliPath": "/home/y_ohi/.local/bin/SuperClaude",
+    "timeout": 30000,
+    "maxRetries": 3
+  },
+  "development": {
+    "testFramework": "Jest",
+    "linter": "ESLint",
+    "nodeVersion": ">=18.0.0"
+  }
+}

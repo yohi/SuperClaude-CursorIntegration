@@ -14,7 +14,45 @@ export default class ProgressManager extends EventEmitter {
   }
 
   /**
-   * Start tracking progress for a command
+   * Create and start tracking progress for a command
+   * @param {string} commandId - Unique command identifier
+   * @param {string} commandName - Command name
+   * @param {number} estimatedSteps - Estimated number of steps
+   * @returns {string} Progress ID
+   */
+  createProgress(commandId, commandName, estimatedSteps = 10) {
+    const context = {
+      id: commandId,
+      commandName,
+      startTime: Date.now(),
+      currentStep: 0,
+      totalSteps: estimatedSteps,
+      status: 'initializing',
+      message: 'Starting command execution...',
+      abortController: new AbortController(),
+      cancelled: false,
+      estimatedTimeRemaining: null
+    };
+
+    this.activeCommands.set(commandId, context);
+
+    // 進行状況の定期更新を開始
+    this._startProgressUpdates(commandId);
+
+    this.emit('progress', {
+      id: commandId,
+      commandId: commandId,
+      commandName: context.commandName,
+      progress: 0,
+      status: context.status,
+      message: context.message
+    });
+
+    return commandId;
+  }
+
+  /**
+   * Start tracking progress for a command (legacy method)
    * @param {string} commandId - Unique command identifier
    * @param {string} commandName - Command name
    * @param {Object} options - Progress options
@@ -41,6 +79,7 @@ export default class ProgressManager extends EventEmitter {
 
     this.emit('progress', {
       id: commandId,
+      commandId: commandId,
       commandName: context.commandName,
       progress: 0,
       status: context.status,
@@ -53,12 +92,28 @@ export default class ProgressManager extends EventEmitter {
   /**
    * Update progress for a command
    * @param {string} commandId - Command identifier
-   * @param {Object} update - Progress update
+   * @param {number|Object} percentageOrUpdate - Progress percentage or update object
+   * @param {string} message - Progress message (optional)
    */
-  updateProgress(commandId, update = {}) {
+  updateProgress(commandId, percentageOrUpdate = {}, message = null) {
     const context = this.activeCommands.get(commandId);
     if (!context || context.cancelled) {
       return;
+    }
+
+    let update = {};
+
+    // Handle different parameter formats
+    if (typeof percentageOrUpdate === 'number') {
+      // updateProgress(id, percentage, message) format
+      const percentage = Math.max(0, Math.min(100, percentageOrUpdate));
+      update.step = Math.round((percentage / 100) * context.totalSteps);
+      if (message) {
+        update.message = message;
+      }
+    } else {
+      // updateProgress(id, updateObject) format
+      update = percentageOrUpdate;
     }
 
     // Update context
@@ -85,6 +140,7 @@ export default class ProgressManager extends EventEmitter {
 
     this.emit('progress', {
       id: commandId,
+      commandId: commandId,
       commandName: context.commandName,
       progress: progressPercent,
       status: context.status,
@@ -112,6 +168,7 @@ export default class ProgressManager extends EventEmitter {
 
     this.emit('progress', {
       id: commandId,
+      commandId: commandId,
       commandName: context.commandName,
       progress: 100,
       status: context.status,
@@ -121,10 +178,48 @@ export default class ProgressManager extends EventEmitter {
 
     this.emit('complete', {
       id: commandId,
+      commandId: commandId,
       commandName: context.commandName,
       success: result.success !== false,
       executionTime: Date.now() - context.startTime,
       result
+    });
+
+    this._stopProgressUpdates(commandId);
+    this.activeCommands.delete(commandId);
+  }
+
+  /**
+   * Mark progress as failed
+   * @param {string} commandId - Command identifier
+   * @param {string} errorMessage - Error message
+   */
+  failProgress(commandId, errorMessage = 'Command execution failed') {
+    const context = this.activeCommands.get(commandId);
+    if (!context) {
+      return;
+    }
+
+    context.status = 'failed';
+    context.message = errorMessage;
+
+    this.emit('progress', {
+      id: commandId,
+      commandId: commandId,
+      commandName: context.commandName,
+      progress: Math.round((context.currentStep / context.totalSteps) * 100),
+      status: 'failed',
+      message: errorMessage,
+      executionTime: Date.now() - context.startTime
+    });
+
+    this.emit('complete', {
+      id: commandId,
+      commandId: commandId,
+      commandName: context.commandName,
+      success: false,
+      executionTime: Date.now() - context.startTime,
+      error: errorMessage
     });
 
     this._stopProgressUpdates(commandId);
@@ -151,6 +246,7 @@ export default class ProgressManager extends EventEmitter {
 
     this.emit('progress', {
       id: commandId,
+      commandId: commandId,
       commandName: context.commandName,
       progress: Math.round((context.currentStep / context.totalSteps) * 100),
       status: 'cancelled',
@@ -159,6 +255,7 @@ export default class ProgressManager extends EventEmitter {
 
     this.emit('cancelled', {
       id: commandId,
+      commandId: commandId,
       commandName: context.commandName,
       reason,
       executionTime: Date.now() - context.startTime

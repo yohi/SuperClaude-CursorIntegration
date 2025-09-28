@@ -1,0 +1,24 @@
+{
+  "superclaude": {
+    "cliPath": "/home/y_ohi/.local/bin/SuperClaude",
+    "timeout": 30000,
+    "maxRetries": 3
+  },
+  "ipc": {
+    "timeout": 30000,
+    "bufferSize": 1048576
+  },
+  "cache": {
+    "enabled": true,
+    "maxSize": 100,
+    "ttl": 300000
+  },
+  "logging": {
+    "level": "info",
+    "file": "logs/bridge.log"
+  },
+  "performance": {
+    "monitoring": true,
+    "metricsInterval": 5000
+  }
+}
