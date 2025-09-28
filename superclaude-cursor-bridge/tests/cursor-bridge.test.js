@@ -19,8 +19,9 @@ const mockConfigManager = {
 };
 
 // モジュールの動的モック（静的 import の前に設定）
+const mockCommandBridgeFactory = jest.fn(() => mockCommandBridge);
 jest.unstable_mockModule('../src/command-bridge.js', () => ({
-  default: jest.fn(() => mockCommandBridge)
+  default: mockCommandBridgeFactory
 }));
 
 jest.unstable_mockModule('../src/config-manager.js', () => ({
@@ -210,18 +211,17 @@ describe('CursorBridge', () => {
 
   describe('Error Handling', () => {
     test('should handle initialization errors gracefully', () => {
-      // CommandBridge のコンストラクタでエラーを発生させる
-      const mockCommandBridgeConstructor = jest.fn(() => {
+      // 既にインポートされたfactoryを一時的に変更
+      mockCommandBridgeFactory.mockImplementationOnce(() => {
         throw new Error('Failed to initialize CommandBridge');
       });
 
-      // CommandBridge モックを一時的に変更
-      jest.unstable_mockModule('../src/command-bridge.js', () => ({
-        default: mockCommandBridgeConstructor
-      }));
-
       // エラーが発生することを確認
       expect(() => new CursorBridge()).toThrow('Failed to initialize CommandBridge');
+
+      // モックをリセット（他のテストに影響しないように）
+      mockCommandBridgeFactory.mockReset();
+      mockCommandBridgeFactory.mockImplementation(() => mockCommandBridge);
     });
 
     test('should provide meaningful error messages', async () => {
