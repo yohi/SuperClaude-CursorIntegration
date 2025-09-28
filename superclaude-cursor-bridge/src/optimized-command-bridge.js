@@ -147,7 +147,7 @@ export default class OptimizedCommandBridge extends CommandBridge {
           executionTime: metrics.executionTime,
           commandId,
           cached: false,
-          warnings: metrics.warning || []
+          warnings: metrics.warnings || []
         }
       };
 
