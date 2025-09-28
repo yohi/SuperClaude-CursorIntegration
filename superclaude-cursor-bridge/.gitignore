@@ -111,15 +111,8 @@ tests/**/*..hidden
 tests/**/test_config.txt
 tests/**/*..backup*
 
-# Generated test files in project root (緊急対策)
-/[0-9]*_*
-/..hidden
-/backup..*
-/config.txt
-/document..backup
-/myfile..txt
-/test..config..json
-/*_subdir/
+# Generated test files (scoped directory; avoid root-wide ignores)
+/tests-root-artifacts/**
 
 # Test temporary directories and files
 *..backup/

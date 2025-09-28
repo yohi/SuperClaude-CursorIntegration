@@ -192,7 +192,8 @@ superclaude-cursor-bridge/
 - [x] JSON Protocol Handler のテストカバレッジ90%以上
 - [x] Command Bridge のテストカバレッジ90%以上
 - [x] Configuration Manager のテストカバレッジ90%以上
-- [~] OptimizedCommandBridge のテストカバレッジ90%以上 (0% → 統合テストで対応)
+- [ ] OptimizedCommandBridge のユニットテスト目標（90%）は今回スコープ外
+      └ 統合テストで機能要件を担保（詳細は Task 4.2 参照）
 - [x] PerformanceMonitor のテストカバレッジ90%以上
 - [x] ProgressManager のテストカバレッジ90%以上
 - [x] ResultCache のテストカバレッジ90%以上

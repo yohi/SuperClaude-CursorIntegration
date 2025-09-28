@@ -183,7 +183,7 @@ describe('End-to-End Integration Tests', () => {
       }
 
       const cacheStats = optimizedBridge.resultCache.getStats();
-      expect(cacheStats.size).toBeLessThanOrEqual(50);
+      expect(cacheStats.totalEntries).toBeLessThanOrEqual(50);
     });
 
     it('should handle concurrent command execution', async () => {

@@ -13,6 +13,11 @@ const responses = {
     message: 'SuperClaude Agent Help',
     data: { availableAgents: ['coder', 'tester', 'analyzer'] }
   }),
+  '/test:error': JSON.stringify({
+    success: false,
+    message: 'Simulated error',
+    data: null
+  }),
   '/test:run': JSON.stringify({
     success: true,
     message: 'Test executed successfully',
@@ -34,5 +39,5 @@ const responses = {
 const response = responses[command] || responses['default'];
 console.log(response);
 
-// 終了コード
-process.exit(0);
+// 終了コード (エラーケースでは非0を返す)
+process.exit(command === '/test:error' ? 1 : 0);
