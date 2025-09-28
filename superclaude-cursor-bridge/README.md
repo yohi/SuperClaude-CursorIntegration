@@ -124,6 +124,28 @@ npm run cleanup:auto
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## 使用方法
+
+### 基本的なコマンド実行
+
+Cursor IDEのチャット機能から以下のようにSuperClaudeコマンドを実行できます：
+
+```
+/sc:research プロジェクト分析の方法
+/sc:analyze src/components/
+/sc:review --pr
+/sc:explain 関数の動作原理
+```
+
+### 利用可能なコマンド例
+
+- **コード分析**: `/sc:analyze <path>` - 指定したパスのコードを詳細分析
+- **コードレビュー**: `/sc:review <options>` - コードレビューの実行
+- **技術調査**: `/sc:research <query>` - 技術的な調査と情報収集
+- **コード説明**: `/sc:explain <target>` - コードの動作説明
+
+詳細な使用方法は[ユーザーマニュアル](docs/user-manual.md)を参照してください。
+
 ## ライセンス
 
 MIT License
@@ -139,3 +161,11 @@ MIT License
 ## サポート
 
 問題や質問がある場合は、GitHubのIssuesを使用してください。
+
+## ドキュメント
+
+- [インストールガイド](docs/installation.md)
+- [ユーザーマニュアル](docs/user-manual.md)
+- [設定ガイド](docs/configuration.md)
+- [APIドキュメント](docs/api.md)
+- [トラブルシューティング](docs/troubleshooting.md)

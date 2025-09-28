@@ -34,6 +34,7 @@
   },
   "keywords": [
     "superclaude",
+    "cursor",
     "cursor-ide",
     "ai-assistant",
     "bridge",
@@ -44,5 +45,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/SuperClaude/superclaude-cursor-bridge"
+  },
+  "homepage": "https://github.com/SuperClaude/superclaude-cursor-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/SuperClaude/superclaude-cursor-bridge/issues"
   }
 }
