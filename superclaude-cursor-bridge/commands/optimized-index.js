@@ -86,7 +86,14 @@ export default class OptimizedCommandRegistry extends EventEmitter {
 
     // コマンドの独自のexecuteメソッドを呼び出すことで
     // 入力検証とCLI引数の整形を適切に実行
-    return await command.execute(...args, options);
+    const commandArgs = [...args];
+    const lastArg = commandArgs[commandArgs.length - 1];
+    if (lastArg && typeof lastArg === 'object' && !Array.isArray(lastArg)) {
+      commandArgs[commandArgs.length - 1] = { ...lastArg, ...options };
+    } else {
+      commandArgs.push({ ...options });
+    }
+    return await command.execute(...commandArgs);
   }
 
   /**

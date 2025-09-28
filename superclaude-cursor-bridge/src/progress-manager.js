@@ -41,6 +41,7 @@ export default class ProgressManager extends EventEmitter {
 
     this.emit('progress', {
       id: commandId,
+      commandName: context.commandName,
       progress: 0,
       status: context.status,
       message: context.message
@@ -151,7 +152,7 @@ export default class ProgressManager extends EventEmitter {
     this.emit('progress', {
       id: commandId,
       commandName: context.commandName,
-      progress: context.currentStep / context.totalSteps * 100,
+      progress: Math.round((context.currentStep / context.totalSteps) * 100),
       status: 'cancelled',
       message: reason
     });
@@ -219,7 +220,8 @@ export default class ProgressManager extends EventEmitter {
       }
 
       // Emit heartbeat for long-running commands
-      if (context.status === 'running' && Date.now() - context.startTime > 5000) {
+      const terminal = new Set(['completed', 'failed', 'cancelled']);
+      if (!terminal.has(context.status) && Date.now() - context.startTime > 5000) {
         this.emit('heartbeat', {
           id: commandId,
           commandName: context.commandName,

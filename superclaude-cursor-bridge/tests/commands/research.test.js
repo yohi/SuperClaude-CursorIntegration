@@ -6,9 +6,6 @@
 import { jest } from '@jest/globals';
 
 // モック設定 - ESModule importをモックする前に設定
-jest.unstable_mockModule('../../commands/research.js', () => ({
-  default: jest.fn()
-}));
 jest.unstable_mockModule('../../src/command-bridge.js', () => ({
   default: jest.fn()
 }));

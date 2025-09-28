@@ -49,7 +49,7 @@ export default class ResultCache {
   _normalizeArgs(args) {
     return args.map(arg => {
       if (typeof arg === 'string') {
-        return arg.trim().toLowerCase();
+        return arg.trim();
       }
       if (typeof arg === 'object' && arg !== null) {
         // オブジェクトのプロパティをソートして一貫性を保つ

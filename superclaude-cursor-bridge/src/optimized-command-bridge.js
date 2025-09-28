@@ -46,7 +46,17 @@ export default class OptimizedCommandBridge extends CommandBridge {
     if (!options.skipCache) {
       const cachedResult = this.resultCache.get(commandName, args);
       if (cachedResult) {
-        return cachedResult;
+        const res = {
+          ...cachedResult,
+          _metrics: {
+            ...(cachedResult._metrics || {}),
+            commandId,
+            cached: true,
+            executionTime: 0,
+            warnings: []
+          }
+        };
+        return res;
       }
     }
 
@@ -162,9 +172,12 @@ export default class OptimizedCommandBridge extends CommandBridge {
     });
 
     return new Promise((resolve, reject) => {
-      const startTime = Date.now(); // 適切なタイムスタンプキャプチャ
+      const startTime = Date.now();
+      let bootstrapTimer;
+      let progressInterval;
+      let finalizeTimer;
 
-      const timeout = setTimeout(() => {
+      bootstrapTimer = setTimeout(() => {
         // AbortSignalチェック
         if (options.signal?.aborted) {
           reject(new Error('Command execution was aborted'));
@@ -183,7 +196,7 @@ export default class OptimizedCommandBridge extends CommandBridge {
         ];
 
         let currentProgressIndex = 0;
-        const progressInterval = setInterval(() => {
+        progressInterval = setInterval(() => {
           if (currentProgressIndex < progressSteps.length) {
             this.progressManager.updateProgress(commandId, {
               step: progressSteps[currentProgressIndex],
@@ -191,15 +204,16 @@ export default class OptimizedCommandBridge extends CommandBridge {
             });
             currentProgressIndex++;
           } else {
-            clearInterval(progressInterval);
+            if (progressInterval) clearInterval(progressInterval);
           }
         }, 500); // 0.5秒間隔で更新
 
         // 模擬実行時間（実際の実装ではSuperClaude CLIのspawn）
         const executionTime = this._getEstimatedExecutionTime(scCommand);
+        const delay = Math.max(executionTime - 100, 0);
 
-        setTimeout(() => {
-          clearInterval(progressInterval);
+        finalizeTimer = setTimeout(() => {
+          if (progressInterval) clearInterval(progressInterval);
 
           // 最終AbortSignalチェック
           if (options.signal?.aborted) {
@@ -213,17 +227,21 @@ export default class OptimizedCommandBridge extends CommandBridge {
             args: args,
             output: `Optimized mock execution result for ${scCommand}`,
             timestamp: new Date().toISOString(),
-            executionTime: Date.now() - startTime // 適切な実行時間計算
+            executionTime: Date.now() - startTime
           });
-        }, executionTime - 100); // タイムアウトから少し早めに完了
+        }, delay);
 
       }, 100);
 
       // AbortSignalハンドラー
       if (options.signal) {
         options.signal.addEventListener('abort', () => {
-          clearTimeout(timeout);
-          reject(new Error('Command execution was aborted'));
+          if (bootstrapTimer) clearTimeout(bootstrapTimer);
+          if (finalizeTimer) clearTimeout(finalizeTimer);
+          if (progressInterval) clearInterval(progressInterval);
+          const err = new Error('Command execution was aborted');
+          err.name = 'AbortError';
+          reject(err);
         });
       }
     });

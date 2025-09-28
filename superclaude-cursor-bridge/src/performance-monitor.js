@@ -51,7 +51,11 @@ export default class PerformanceMonitor {
       },
       success: result.success !== false,
       timestamp: new Date().toISOString(),
-      warning: this._generateWarnings(endTime - context.startTime, endMemory)
+      warning: this._generateWarnings(
+        endTime - context.startTime,
+        endMemory,
+        context.startMemory
+      )
     };
 
     this._recordMetrics(metrics);
@@ -62,10 +66,11 @@ export default class PerformanceMonitor {
    * Generate performance warnings
    * @private
    * @param {number} executionTime - Execution time in ms
-   * @param {Object} memoryUsage - Memory usage object
+   * @param {Object} endMemoryUsage - End memory usage object
+   * @param {Object} startMemoryUsage - Start memory usage object
    * @returns {Array} Array of warnings
    */
-  _generateWarnings(executionTime, memoryUsage) {
+  _generateWarnings(executionTime, endMemoryUsage, startMemoryUsage) {
     const warnings = [];
 
     if (executionTime > this.thresholds.lightCommand) {
@@ -76,12 +81,27 @@ export default class PerformanceMonitor {
       });
     }
 
-    if (memoryUsage.rss > this.thresholds.memoryWarning) {
-      warnings.push({
-        type: 'high_memory',
-        message: `High memory usage: ${Math.round(memoryUsage.rss / 1024 / 1024)}MB`,
-        severity: 'medium'
-      });
+    // メモリ増分での警告判定
+    if (startMemoryUsage && endMemoryUsage) {
+      const memoryDelta = endMemoryUsage.rss - startMemoryUsage.rss;
+      const memoryDeltaThreshold = 256 * 1024 * 1024; // 256MB増加をしきい値とする
+
+      if (memoryDelta > memoryDeltaThreshold) {
+        warnings.push({
+          type: 'memory',
+          message: `Memory increased by ${Math.round(memoryDelta / 1024 / 1024)}MB during execution`,
+          severity: memoryDelta > memoryDeltaThreshold * 2 ? 'high' : 'medium'
+        });
+      }
+    } else {
+      // 開始時メモリが不明な場合は従来通りの絶対値判定（但し高いしきい値で）
+      if (endMemoryUsage.rss > this.thresholds.memoryWarning * 2) {
+        warnings.push({
+          type: 'memory',
+          message: `High absolute memory usage: ${Math.round(endMemoryUsage.rss / 1024 / 1024)}MB`,
+          severity: 'medium'
+        });
+      }
     }
 
     return warnings;
@@ -149,7 +169,7 @@ export default class PerformanceMonitor {
       recentWarnings: executions
         .slice(0, 10)
         .flatMap(e => e.warning || [])
-        .filter(w => w.severity === 'high')
+        .filter(w => w.severity === 'high' || w.type === 'memory')
     };
   }
 
