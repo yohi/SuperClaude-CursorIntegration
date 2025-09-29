@@ -181,12 +181,12 @@ export default class ProgressManager extends EventEmitter {
     });
 
     // 失敗時の専用イベント（ドキュメント整合性のため）
-    if (context.status === 'failed' || result.success === false) {
+    if (context.status === 'failed') {
       this.emit('failed', {
         id: commandId,
         commandId: commandId,
         commandName: context.commandName,
-        error: result.error || result.message || 'Command execution failed',
+        error: result.error || result.message || context.message,
         executionTime: Date.now() - context.startTime
       });
     }
