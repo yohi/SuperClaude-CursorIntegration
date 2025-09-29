@@ -44,16 +44,16 @@ export default class OptimizedCommandBridge extends EventEmitter {
     this.validateParameters(commandName, args);
 
     const commandId = options.commandId || randomUUID();
-    const cacheKey = this._getCacheKey(commandName, args);
-
-    // Check cache first
-    if (!options.skipCache && this.resultCache.has(cacheKey)) {
-      const cachedResult = this.resultCache.get(cacheKey);
-      return {
-        ...cachedResult,
-        cached: true,
-        commandId
-      };
+    // Check cache first (command/args-based)
+    if (!options.skipCache) {
+      const cachedResult = this.resultCache.get(commandName, args);
+      if (cachedResult) {
+        return {
+          ...cachedResult,
+          cached: true,
+          commandId
+        };
+      }
     }
 
     // Start performance monitoring
@@ -70,9 +70,9 @@ export default class OptimizedCommandBridge extends EventEmitter {
       // Execute optimized command
       const result = await this._executeOptimizedCommand(commandName, args, progressId, options.signal);
 
-      // Cache successful results
-      if (result.success) {
-        this.resultCache.set(cacheKey, result);
+      // Cache successful results (command/args-based)
+      if (result?.success) {
+        this.resultCache.set(commandName, args, result);
       }
 
       // Update progress to complete
@@ -131,15 +131,7 @@ export default class OptimizedCommandBridge extends EventEmitter {
     return result;
   }
 
-  /**
-   * Generate cache key for command and arguments
-   * @param {string} command - Command name
-   * @param {Array} args - Command arguments
-   * @returns {string} Cache key
-   */
-  _getCacheKey(command, args) {
-    return `${command}:${JSON.stringify(args)}`;
-  }
+  // Note: _getCacheKey method removed - using ResultCache's unified API directly
 
   /**
    * Estimate steps for command execution
@@ -230,7 +222,11 @@ export default class OptimizedCommandBridge extends EventEmitter {
    * @param {string} commandName - Optional command name to clear
    */
   clearCache(commandName = null) {
-    this.resultCache.clear(commandName);
+    if (commandName) {
+      this.resultCache.invalidate(commandName);
+    } else {
+      this.resultCache.clear();
+    }
   }
 
   /**

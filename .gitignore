@@ -1,8 +1,7 @@
 # Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+jspm_packages/
+bower_components
 
 # Runtime data
 pids
@@ -14,29 +13,29 @@ pids
 coverage/
 .nyc_output/
 
-# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+# Build and cache directories
+build/
+dist/
+.cache/
+.parcel-cache
 .grunt
+.fusebox/
+.jest/
 
-# Bower dependency directory (https://bower.io/)
-bower_components
+# Log files
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# node-waf configuration
-.lock-wscript
-
-# Compiled binary addons (https://nodejs.org/api/addons.html)
-build/Release
-
-# Dependency directories
-jspm_packages/
+# Cache files
+.eslintcache
+.prettiercache
+.npm
 
 # TypeScript v1 declaration files
 typings/
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
 
 # Optional REPL history
 .node_repl_history
@@ -51,24 +50,13 @@ typings/
 .env
 .env.test
 
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# next.js build output
+# Framework build outputs
 .next
-
-# nuxt.js build output
 .nuxt
-
-# vuepress build output
 .vuepress/dist
 
 # Serverless directories
 .serverless
-
-# FuseBox cache
-.fusebox/
 
 # DynamoDB Local files
 .dynamodb/
@@ -103,21 +91,10 @@ Thumbs.db
 
 # Test artifacts
 test-results/
-coverage/
-.nyc_output/
 junit.xml
 
-# Log files
-*.log
-logs/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Runtime and cache
-.cache/
-dist/
-build/
+# node-waf configuration
+.lock-wscript
 
 # Temporary test files
 test-quick-validation.js
@@ -145,13 +122,3 @@ secret.txt
 # Editor temporary files
 .#*
 \#*#
-*~
-
-# Jest cache
-.jest/
-
-# ESLint cache
-.eslintcache
-
-# Prettier cache
-.prettiercache

@@ -21,12 +21,16 @@ export default class ProgressManager extends EventEmitter {
    * @returns {string} Progress ID
    */
   createProgress(commandId, commandName, estimatedSteps = 10) {
+    // 数値サニタイゼーションと境界値チェック
+    const sanitizedSteps = Number(estimatedSteps);
+    const totalSteps = Number.isFinite(sanitizedSteps) ? Math.max(1, sanitizedSteps) : 10;
+
     const context = {
       id: commandId,
       commandName,
       startTime: Date.now(),
       currentStep: 0,
-      totalSteps: estimatedSteps,
+      totalSteps,
       status: 'initializing',
       message: 'Starting command execution...',
       abortController: new AbortController(),
@@ -64,7 +68,7 @@ export default class ProgressManager extends EventEmitter {
       commandName,
       startTime: Date.now(),
       currentStep: 0,
-      totalSteps: options.totalSteps || this.maxSteps,
+      totalSteps: Math.max(1, options.totalSteps || this.maxSteps),
       status: 'initializing',
       message: 'Starting command execution...',
       abortController: new AbortController(),
@@ -176,6 +180,17 @@ export default class ProgressManager extends EventEmitter {
       executionTime: Date.now() - context.startTime
     });
 
+    // 失敗時の専用イベント（ドキュメント整合性のため）
+    if (context.status === 'failed' || result.success === false) {
+      this.emit('failed', {
+        id: commandId,
+        commandId: commandId,
+        commandName: context.commandName,
+        error: result.error || result.message || 'Command execution failed',
+        executionTime: Date.now() - context.startTime
+      });
+    }
+
     this.emit('complete', {
       id: commandId,
       commandId: commandId,
@@ -210,6 +225,15 @@ export default class ProgressManager extends EventEmitter {
       progress: Math.round((context.currentStep / context.totalSteps) * 100),
       status: 'failed',
       message: errorMessage,
+      executionTime: Date.now() - context.startTime
+    });
+
+    // 明示的なfailedイベント
+    this.emit('failed', {
+      id: commandId,
+      commandId: commandId,
+      commandName: context.commandName,
+      error: errorMessage,
       executionTime: Date.now() - context.startTime
     });
 

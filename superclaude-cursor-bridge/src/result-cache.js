@@ -93,9 +93,13 @@ export default class ResultCache {
   get(commandNameOrKey, args = []) {
     let key;
 
-    // If args is empty and commandNameOrKey looks like a key, use it directly
-    if (args.length === 0 && commandNameOrKey.includes(':')) {
-      key = commandNameOrKey;
+    // If args is empty, check if commandNameOrKey is a direct key
+    if (args.length === 0) {
+      const looksLikeHashKey = /^[a-f0-9]{64}$/i.test(commandNameOrKey);
+      const looksLikeColonKey = commandNameOrKey.includes(':');
+      key = (looksLikeHashKey || looksLikeColonKey)
+        ? commandNameOrKey
+        : this._generateKey(commandNameOrKey, args);
     } else {
       key = this._generateKey(commandNameOrKey, args);
     }
@@ -300,9 +304,11 @@ export default class ResultCache {
    */
   invalidate(commandName, args = null) {
     if (args !== null) {
-      // 特定の引数の組み合わせのみ無効化
-      const key = this._generateKey(commandName, args);
-      this.cache.delete(key);
+      // 特定の引数の組み合わせのみ無効化（両方のキー形式を削除）
+      const keyHash = this._generateKey(commandName, args);
+      const altKey = `${commandName}:${JSON.stringify(this._normalizeArgs(args))}`;
+      this.cache.delete(keyHash);
+      this.cache.delete(altKey);
     } else {
       // コマンド全体を無効化
       for (const [key, entry] of this.cache.entries()) {
