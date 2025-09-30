@@ -84,7 +84,7 @@ superclaude install
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/SuperClaude/SuperClaudeForCursor.git
+git clone https://github.com/yohi/SuperClaudeForCursor.git
 cd SuperClaudeForCursor/superclaude-cursor-bridge
 
 # 依存関係をインストール
@@ -245,7 +245,7 @@ Cursor IDE のチャット機能から SuperClaude コマンドを実行：
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/SuperClaude/SuperClaudeForCursor.git
+git clone https://github.com/yohi/SuperClaudeForCursor.git
 cd SuperClaudeForCursor/superclaude-cursor-bridge
 
 # 依存関係をインストール
@@ -399,8 +399,8 @@ DEBUG=superclaude:* npm start
 ### サポートチャンネル
 
 - 📖 **ドキュメント**: [包括的ドキュメント](docs/COMPREHENSIVE_DOCUMENTATION.md)
-- 🐛 **バグ報告**: [GitHub Issues](https://github.com/yohi/SuperClaude-CursorIntegration/issues)
-- 💬 **ディスカッション**: [GitHub Discussions](https://github.com/yohi/SuperClaude-CursorIntegration/discussions)
+- 🐛 **バグ報告**: [GitHub Issues](https://github.com/yohi/SuperClaudeForCursor/issues)
+- 💬 **ディスカッション**: [GitHub Discussions](https://github.com/yohi/SuperClaudeForCursor/discussions)
 
 ## ライセンス
 
@@ -408,8 +408,8 @@ MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してくださ�
 
 ## 謝辞
 
-- [SuperClaude](https://github.com/yohi/SuperClaude-CursorIntegration) - 強力な AI 拡張フレームワーク
-- [Cursor IDE](https://cursor.com) - 次世代 AI 統合エディタ
+- [SuperClaude](https://github.com/bifrost-inc/SuperClaude) - 強力な AI 拡張フレームワーク
+- [Cursor IDE](https://www.cursor.com) - 次世代 AI 統合エディタ
 - [Claude AI](https://www.anthropic.com/claude) - 高度な AI アシスタント
 - オープンソースコミュニティの皆様
 
