@@ -64,13 +64,46 @@ export default class ResultCache {
   }
 
   /**
-   * Get cached result for command
-   * @param {string} commandName - Command name
-   * @param {Array} args - Command arguments
+   * Check if cache has entry for key
+   * @param {string} key - Cache key
+   * @returns {boolean} True if key exists and not expired
+   */
+  has(key) {
+    const entry = this.cache.get(key);
+
+    if (!entry) {
+      return false;
+    }
+
+    // TTLチェック
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Get cached result for command or key
+   * @param {string} commandNameOrKey - Command name or cache key
+   * @param {Array} args - Command arguments (optional for key-based access)
    * @returns {Object|null} Cached result or null
    */
-  get(commandName, args = []) {
-    const key = this._generateKey(commandName, args);
+  get(commandNameOrKey, args = []) {
+    let key;
+
+    // If args is empty, check if commandNameOrKey is a direct key
+    if (args.length === 0) {
+      const looksLikeHashKey = /^[a-f0-9]{64}$/i.test(commandNameOrKey);
+      const looksLikeColonKey = commandNameOrKey.includes(':');
+      key = (looksLikeHashKey || looksLikeColonKey)
+        ? commandNameOrKey
+        : this._generateKey(commandNameOrKey, args);
+    } else {
+      key = this._generateKey(commandNameOrKey, args);
+    }
+
     const entry = this.cache.get(key);
 
     if (!entry) {
@@ -87,32 +120,62 @@ export default class ResultCache {
     entry.hitCount++;
     entry.lastAccessed = Date.now();
 
+    // 型安全なスプレッド処理（プリミティブ型対応）
+    const isPlainObject = entry.result && typeof entry.result === 'object' && !Array.isArray(entry.result);
+    const payload = isPlainObject ? { ...entry.result } : { value: entry.result };
+
     return {
-      ...entry.result,
+      ...payload,
       _cacheInfo: {
         cached: true,
         hitCount: entry.hitCount,
         cachedAt: entry.cachedAt,
-        lastAccessed: entry.lastAccessed
+        lastAccessed: entry.lastAccessed,
+        expiresAt: entry.expiresAt,
+        key
       }
     };
   }
 
   /**
    * Store result in cache
-   * @param {string} commandName - Command name
-   * @param {Array} args - Command arguments
-   * @param {Object} result - Result to cache
+   * @param {string} keyOrCommandName - Cache key or command name
+   * @param {Array|Object} argsOrResult - Command arguments or result object
+   * @param {Object} result - Result to cache (if using command name)
    * @param {number} customTTL - Custom TTL in milliseconds
    * @returns {boolean} True if cached successfully
    */
-  set(commandName, args = [], result, customTTL = null) {
-    // キャッシュ対象外の結果をチェック
-    if (!this._shouldCache(commandName, result)) {
+  set(keyOrCommandName, argsOrResult = [], result = null, customTTL = null) {
+    let key, commandName = null, args = [], actualResult, isKeyBased = false;
+
+    // キー判定ロジック（get()と同じ）
+    const looksLikeHashKey = /^[a-f0-9]{64}$/i.test(keyOrCommandName);
+    const looksLikeColonKey = typeof keyOrCommandName === 'string' && keyOrCommandName.includes(':');
+
+    // Key-based: set(key, result)
+    if (result === null && (looksLikeHashKey || looksLikeColonKey)) {
+      isKeyBased = true;
+      key = keyOrCommandName;
+      actualResult = argsOrResult;
+      if (looksLikeColonKey) {
+        commandName = key.split(':', 1)[0];
+      }
+    } else {
+      // Command-based: set(commandName, args, result)
+      if (!Array.isArray(argsOrResult) || result == null || typeof result !== 'object') {
+        throw new TypeError('set(commandName, args:Array, result:Object, ttl?) or set(key, result:Object, ttl?)');
+      }
+      commandName = keyOrCommandName;
+      args = argsOrResult;
+      actualResult = result;
+      key = this._generateKey(commandName, args);
+    }
+
+    // キャッシュ対象外の結果をチェック（キー経由はコマンドフィルタをスキップ）
+    if (!this._shouldCache(commandName, actualResult, { skipCommandFilter: isKeyBased })) {
       return false;
     }
 
-    const key = this._generateKey(commandName, args);
     const ttl = customTTL || this.commandTTLs[commandName] || this.defaultTTL;
     const now = Date.now();
 
@@ -120,12 +183,12 @@ export default class ResultCache {
       key,
       commandName,
       args: this._normalizeArgs(args),
-      result: this._cloneResult(result),
+      result: this._cloneResult(actualResult),
       cachedAt: now,
       expiresAt: now + ttl,
       lastAccessed: now,
       hitCount: 0,
-      size: this._estimateSize(result)
+      size: this._estimateSize(actualResult)
     };
 
     // メモリ制限チェック
@@ -142,9 +205,10 @@ export default class ResultCache {
    * @private
    * @param {string} commandName - Command name
    * @param {Object} result - Result to check
+   * @param {Object} options - Options { skipCommandFilter: boolean }
    * @returns {boolean} True if should be cached
    */
-  _shouldCache(commandName, result) {
+  _shouldCache(commandName, result, options = {}) {
     // エラー結果はキャッシュしない
     if (!result || result.success === false) {
       return false;
@@ -153,6 +217,11 @@ export default class ResultCache {
     // 大きすぎる結果はキャッシュしない (> 1MB)
     if (this._estimateSize(result) > 1024 * 1024) {
       return false;
+    }
+
+    // キーベースのアクセスの場合、コマンドフィルタをスキップ
+    if (options.skipCommandFilter) {
+      return true;
     }
 
     // 特定のコマンドのみキャッシュ
@@ -255,9 +324,11 @@ export default class ResultCache {
    */
   invalidate(commandName, args = null) {
     if (args !== null) {
-      // 特定の引数の組み合わせのみ無効化
-      const key = this._generateKey(commandName, args);
-      this.cache.delete(key);
+      // 特定の引数の組み合わせのみ無効化（両方のキー形式を削除）
+      const keyHash = this._generateKey(commandName, args);
+      const altKey = `${commandName}:${JSON.stringify(this._normalizeArgs(args))}`;
+      this.cache.delete(keyHash);
+      this.cache.delete(altKey);
     } else {
       // コマンド全体を無効化
       for (const [key, entry] of this.cache.entries()) {

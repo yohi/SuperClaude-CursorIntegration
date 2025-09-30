@@ -44,30 +44,40 @@ export default class OptimizedCommandBridge extends EventEmitter {
     this.validateParameters(commandName, args);
 
     const commandId = options.commandId || randomUUID();
-    const cacheKey = this._getCacheKey(commandName, args);
-
-    // Check cache first
-    if (!options.skipCache && this.resultCache.has(cacheKey)) {
-      return this.resultCache.get(cacheKey);
+    // Check cache first (command/args-based)
+    if (!options.skipCache) {
+      const cachedResult = this.resultCache.get(commandName, args);
+      if (cachedResult) {
+        return {
+          ...cachedResult,
+          cached: true,
+          commandId
+        };
+      }
     }
 
     // Start performance monitoring
     const perfContext = this.performanceMonitor.startMeasurement(commandName);
 
     // Create progress tracking
-    const progressId = this.progressManager.createProgress(
+    const progressContext = this.progressManager.createProgress(
       commandId,
       commandName,
       this._estimateSteps(commandName)
     );
+    const progressId = progressContext.id;
+
+    // Combine external signal with progress abort signal
+    const progressSignal = this.progressManager.getAbortSignal(progressId);
+    const combinedSignal = this._combineSignals(options.signal, progressSignal);
 
     try {
-      // Execute optimized command
-      const result = await this._executeOptimizedCommand(commandName, args, progressId, options.signal);
+      // Execute optimized command with combined signal
+      const result = await this._executeOptimizedCommand(commandName, args, progressId, combinedSignal);
 
-      // Cache successful results
-      if (result.success) {
-        this.resultCache.set(cacheKey, result);
+      // Cache successful results (command/args-based)
+      if (result?.success) {
+        this.resultCache.set(commandName, args, result);
       }
 
       // Update progress to complete
@@ -77,7 +87,11 @@ export default class OptimizedCommandBridge extends EventEmitter {
       const measurementResult = { success: result?.success !== false };
       this.performanceMonitor.endMeasurement(perfContext, measurementResult);
 
-      return result;
+      return {
+        ...result,
+        cached: false,
+        commandId
+      };
 
     } catch (error) {
       // Handle errors
@@ -122,15 +136,7 @@ export default class OptimizedCommandBridge extends EventEmitter {
     return result;
   }
 
-  /**
-   * Generate cache key for command and arguments
-   * @param {string} command - Command name
-   * @param {Array} args - Command arguments
-   * @returns {string} Cache key
-   */
-  _getCacheKey(command, args) {
-    return `${command}:${JSON.stringify(args)}`;
-  }
+  // Note: _getCacheKey method removed - using ResultCache's unified API directly
 
   /**
    * Estimate steps for command execution
@@ -217,11 +223,42 @@ export default class OptimizedCommandBridge extends EventEmitter {
   }
 
   /**
+   * Combine two AbortSignals into one
+   * @private
+   * @param {AbortSignal} signalA - First signal
+   * @param {AbortSignal} signalB - Second signal
+   * @returns {AbortSignal|null} Combined signal
+   */
+  _combineSignals(signalA, signalB) {
+    if (!signalA) return signalB || null;
+    if (!signalB) return signalA;
+
+    const controller = new AbortController();
+    const abort = (evt) => controller.abort(evt?.target?.reason || undefined);
+
+    // すでにabortされている場合は即座にabort
+    if (signalA.aborted || signalB.aborted) {
+      controller.abort(signalA.aborted ? signalA.reason : signalB.reason);
+      return controller.signal;
+    }
+
+    // どちらかがabortされたら合成signalもabort
+    signalA.addEventListener('abort', abort, { once: true });
+    signalB.addEventListener('abort', abort, { once: true });
+
+    return controller.signal;
+  }
+
+  /**
    * Clear cache
    * @param {string} commandName - Optional command name to clear
    */
   clearCache(commandName = null) {
-    this.resultCache.clear(commandName);
+    if (commandName) {
+      this.resultCache.invalidate(commandName);
+    } else {
+      this.resultCache.clear();
+    }
   }
 
   /**
