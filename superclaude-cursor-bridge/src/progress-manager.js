@@ -18,7 +18,7 @@ export default class ProgressManager extends EventEmitter {
    * @param {string} commandId - Unique command identifier
    * @param {string} commandName - Command name
    * @param {number} estimatedSteps - Estimated number of steps
-   * @returns {string} Progress ID
+   * @returns {Object} Progress context object (includes id, abortController, etc.)
    */
   createProgress(commandId, commandName, estimatedSteps = 10) {
     // 数値サニタイゼーションと境界値チェック
@@ -52,7 +52,7 @@ export default class ProgressManager extends EventEmitter {
       message: context.message
     });
 
-    return commandId;
+    return context;
   }
 
   /**
@@ -63,12 +63,16 @@ export default class ProgressManager extends EventEmitter {
    * @returns {Object} Progress context
    */
   startProgress(commandId, commandName, options = {}) {
+    // 数値サニタイゼーションと境界値チェック（createProgressと同じロジック）
+    const sanitizedSteps = Number(options.totalSteps || this.maxSteps);
+    const totalSteps = Number.isFinite(sanitizedSteps) ? Math.max(1, sanitizedSteps) : this.maxSteps;
+
     const context = {
       id: commandId,
       commandName,
       startTime: Date.now(),
       currentStep: 0,
-      totalSteps: Math.max(1, options.totalSteps || this.maxSteps),
+      totalSteps,
       status: 'initializing',
       message: 'Starting command execution...',
       abortController: new AbortController(),
@@ -375,7 +379,9 @@ export default class ProgressManager extends EventEmitter {
    * Cleanup all active commands
    */
   cleanup() {
-    for (const [commandId] of this.activeCommands) {
+    // Map走査中の破壊的変更を避けるため、キー配列を先にコピー
+    const ids = Array.from(this.activeCommands.keys());
+    for (const commandId of ids) {
       this.cancelCommand(commandId, 'System cleanup');
     }
     this.activeCommands.clear();

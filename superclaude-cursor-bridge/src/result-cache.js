@@ -120,13 +120,19 @@ export default class ResultCache {
     entry.hitCount++;
     entry.lastAccessed = Date.now();
 
+    // 型安全なスプレッド処理（プリミティブ型対応）
+    const isPlainObject = entry.result && typeof entry.result === 'object' && !Array.isArray(entry.result);
+    const payload = isPlainObject ? { ...entry.result } : { value: entry.result };
+
     return {
-      ...entry.result,
+      ...payload,
       _cacheInfo: {
         cached: true,
         hitCount: entry.hitCount,
         cachedAt: entry.cachedAt,
-        lastAccessed: entry.lastAccessed
+        lastAccessed: entry.lastAccessed,
+        expiresAt: entry.expiresAt,
+        key
       }
     };
   }
@@ -140,25 +146,33 @@ export default class ResultCache {
    * @returns {boolean} True if cached successfully
    */
   set(keyOrCommandName, argsOrResult = [], result = null, customTTL = null) {
-    let key, commandName, args, actualResult;
+    let key, commandName = null, args = [], actualResult, isKeyBased = false;
 
-    // Determine if this is key-based or command-based access
-    if (result === null && typeof argsOrResult === 'object' && !Array.isArray(argsOrResult)) {
-      // Key-based access: set(key, result)
+    // キー判定ロジック（get()と同じ）
+    const looksLikeHashKey = /^[a-f0-9]{64}$/i.test(keyOrCommandName);
+    const looksLikeColonKey = typeof keyOrCommandName === 'string' && keyOrCommandName.includes(':');
+
+    // Key-based: set(key, result)
+    if (result === null && (looksLikeHashKey || looksLikeColonKey)) {
+      isKeyBased = true;
       key = keyOrCommandName;
       actualResult = argsOrResult;
-      commandName = key.split(':')[0]; // Extract command name from key
-      args = [];
+      if (looksLikeColonKey) {
+        commandName = key.split(':', 1)[0];
+      }
     } else {
-      // Command-based access: set(commandName, args, result)
+      // Command-based: set(commandName, args, result)
+      if (!Array.isArray(argsOrResult) || result == null || typeof result !== 'object') {
+        throw new TypeError('set(commandName, args:Array, result:Object, ttl?) or set(key, result:Object, ttl?)');
+      }
       commandName = keyOrCommandName;
       args = argsOrResult;
       actualResult = result;
       key = this._generateKey(commandName, args);
     }
 
-    // キャッシュ対象外の結果をチェック
-    if (!this._shouldCache(commandName, actualResult)) {
+    // キャッシュ対象外の結果をチェック（キー経由はコマンドフィルタをスキップ）
+    if (!this._shouldCache(commandName, actualResult, { skipCommandFilter: isKeyBased })) {
       return false;
     }
 
@@ -191,9 +205,10 @@ export default class ResultCache {
    * @private
    * @param {string} commandName - Command name
    * @param {Object} result - Result to check
+   * @param {Object} options - Options { skipCommandFilter: boolean }
    * @returns {boolean} True if should be cached
    */
-  _shouldCache(commandName, result) {
+  _shouldCache(commandName, result, options = {}) {
     // エラー結果はキャッシュしない
     if (!result || result.success === false) {
       return false;
@@ -202,6 +217,11 @@ export default class ResultCache {
     // 大きすぎる結果はキャッシュしない (> 1MB)
     if (this._estimateSize(result) > 1024 * 1024) {
       return false;
+    }
+
+    // キーベースのアクセスの場合、コマンドフィルタをスキップ
+    if (options.skipCommandFilter) {
+      return true;
     }
 
     // 特定のコマンドのみキャッシュ

@@ -60,15 +60,20 @@ export default class OptimizedCommandBridge extends EventEmitter {
     const perfContext = this.performanceMonitor.startMeasurement(commandName);
 
     // Create progress tracking
-    const progressId = this.progressManager.createProgress(
+    const progressContext = this.progressManager.createProgress(
       commandId,
       commandName,
       this._estimateSteps(commandName)
     );
+    const progressId = progressContext.id;
+
+    // Combine external signal with progress abort signal
+    const progressSignal = this.progressManager.getAbortSignal(progressId);
+    const combinedSignal = this._combineSignals(options.signal, progressSignal);
 
     try {
-      // Execute optimized command
-      const result = await this._executeOptimizedCommand(commandName, args, progressId, options.signal);
+      // Execute optimized command with combined signal
+      const result = await this._executeOptimizedCommand(commandName, args, progressId, combinedSignal);
 
       // Cache successful results (command/args-based)
       if (result?.success) {
@@ -215,6 +220,33 @@ export default class OptimizedCommandBridge extends EventEmitter {
    */
   getOptimizationRecommendations() {
     return this.performanceMonitor.getRecommendations();
+  }
+
+  /**
+   * Combine two AbortSignals into one
+   * @private
+   * @param {AbortSignal} signalA - First signal
+   * @param {AbortSignal} signalB - Second signal
+   * @returns {AbortSignal|null} Combined signal
+   */
+  _combineSignals(signalA, signalB) {
+    if (!signalA) return signalB || null;
+    if (!signalB) return signalA;
+
+    const controller = new AbortController();
+    const abort = (evt) => controller.abort(evt?.target?.reason || undefined);
+
+    // すでにabortされている場合は即座にabort
+    if (signalA.aborted || signalB.aborted) {
+      controller.abort(signalA.aborted ? signalA.reason : signalB.reason);
+      return controller.signal;
+    }
+
+    // どちらかがabortされたら合成signalもabort
+    signalA.addEventListener('abort', abort, { once: true });
+    signalB.addEventListener('abort', abort, { once: true });
+
+    return controller.signal;
   }
 
   /**
